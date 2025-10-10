@@ -118,13 +118,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             return GetLastError();
         }
 
+        RECT initialRect = { 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT };
+        AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
+        LONG initialWidth = initialRect.right - initialRect.left;
+        LONG initialHeight = initialRect.bottom - initialRect.top;
+
         hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
             winClass.lpszClassName,
             L"01. Initialising Direct3D 11",
             WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX | WS_VISIBLE,
             CW_USEDEFAULT, CW_USEDEFAULT,
-            PLAYER_WIDTH,
-            PLAYER_HEIGHT,
+            PLAYER_WIDTH+16,
+            PLAYER_HEIGHT+9,
             0, 0, hInstance, 0);
 
         if (!hwnd) {
@@ -217,7 +222,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         d3d11SwapChainDesc.BufferCount = 2;
         d3d11SwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-        d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+        d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         d3d11SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
         d3d11SwapChainDesc.Flags = 0;
 
@@ -342,6 +347,62 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     free(testTextureBytes);
 
+    ID2D1Factory* pD2DFactory = NULL;
+    IDWriteFactory* pDWriteFactory = NULL;
+    IDWriteTextFormat* pTextFormat = NULL;
+    ID2D1RenderTarget* d2dRenderTarget = NULL;
+
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pD2DFactory);
+    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
+        __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&pDWriteFactory));
+
+    {
+        // Get the backbuffer from the swap chain
+        ID3D11Texture2D* d3d11FrameBuffer;
+        HRESULT hResult = d3d11SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&d3d11FrameBuffer);
+        assert(SUCCEEDED(hResult));
+
+        // Query the backbuffer for its DXGI surface
+        IDXGISurface* dxgiSurface = nullptr;
+        d3d11FrameBuffer->QueryInterface(IID_PPV_ARGS(&dxgiSurface));
+
+        // Create a Direct2D render target from the DXGI surface
+        D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
+            D2D1_RENDER_TARGET_TYPE_DEFAULT,
+            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)
+        );
+        pD2DFactory->CreateDxgiSurfaceRenderTarget(dxgiSurface, &props, &d2dRenderTarget);
+
+        // Release the temporary interface pointers
+        dxgiSurface->Release();
+        d3d11FrameBuffer->Release();
+    }
+
+    d2dRenderTarget->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
+
+    // Text format
+    IDWriteTextFormat* textFormat = nullptr;
+    pDWriteFactory->CreateTextFormat(
+        L"Bahnschrift", // Font family name
+        NULL,
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        24.0f,
+        L"en-us", // Locale
+        &textFormat
+    );
+    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+
+    D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
+
+    // Text brush
+    ID2D1SolidColorBrush* textBrush = nullptr;
+    d2dRenderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(D2D1::ColorF::White),
+        &textBrush
+    );
+
     // Main Loop
     bool isRunning = true;
     while (isRunning)
@@ -377,6 +438,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
         d3d11DeviceContext->Draw(numVerts, 0);
+
+        // Perform D2D rendering
+        d2dRenderTarget->BeginDraw();
+
+        // Clear the D2D surface if needed (e.g., if rendering a transparent overlay)
+        // d2dRenderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
+
+        // Draw the text
+        const wchar_t* text = L"Low Life";
+        d2dRenderTarget->DrawText(
+            text,
+            wcslen(text),
+            textFormat,
+            D2D1::RectF(0, PLAYER_HEIGHT/2, PLAYER_WIDTH, PLAYER_HEIGHT/2+200),
+            textBrush
+        );
+
+        d2dRenderTarget->EndDraw();
 
         d3d11SwapChain->Present(1, 0);
     }

@@ -10,11 +10,14 @@
 #include <d3d11_1.h>
 #pragma comment(lib, "d3d11.lib")
 
-#include <wincodec.h>
-#pragma comment(lib, "windowscodecs.lib")
+#include <d2d1.h>
+#pragma comment(lib, "d2d1.lib")
 
 #include <dwrite.h>
 #pragma comment(lib, "dwrite.lib")
+
+#include <wincodec.h>
+#pragma comment(lib, "windowscodecs.lib")
 
 #include <assert.h>
 
