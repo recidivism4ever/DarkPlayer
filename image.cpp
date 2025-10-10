@@ -3,7 +3,7 @@
 static IWICImagingFactory2* ifactory;
 
 void init_image_loader() {
-    assert(SUCCEEDED(CoCreateInstance(CLSID_WICImagingFactory2, 0, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory2, (LPVOID*)&ifactory)));
+    CoCreateInstance(CLSID_WICImagingFactory2, 0, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory2, (LPVOID*)&ifactory);
 }
 
 BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path) {

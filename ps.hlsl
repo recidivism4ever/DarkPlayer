@@ -256,10 +256,11 @@ float4 ps_main(VS_Output input) : SV_Target
     float playbtnsdf = clamp(sdCircle(
         px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 21.0 * SCALE
     ), 0.0, 1.0);
-    float xlen = 4.0;
-    float xsdf = clamp(opUnion(
+    #define xlen 4.0
+    #define hburgydif 4.0
+    float xsdf = opUnion(
         capsuleSDF(
-            px, 
+            px,
             float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE - xlen),
             float2(PLAYER_WIDTH - 35 * SCALE + xlen, 35 * SCALE + xlen),
             1
@@ -269,23 +270,42 @@ float4 ps_main(VS_Output input) : SV_Target
             float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE + xlen),
             float2(PLAYER_WIDTH - 35 * SCALE + xlen, 35 * SCALE - xlen),
             1
-        )),
-     0.0, 1.0);
-    return brightness * lerp(
-        lerp(
-            lerp(
-                lerp(
-                    mytexture.Sample(mysampler, imgpx),
-                    grey,
-                    imgsdf
-                ),
-                orange,
-                1.0 - barsdf
-            ),
-            orange * 1.5,
-            1.0 - playbtnsdf
-        ),
-    paint,
-    1.0 - xsdf
+    ));
+    xsdf = opUnion(
+        xsdf,
+        capsuleSDF(
+            px,
+            float2(35 * SCALE - xlen, 35 * SCALE),
+            float2(35 * SCALE + xlen, 35 * SCALE),
+            1
+        )
     );
+    xsdf = opUnion(
+        xsdf,
+        capsuleSDF(
+            px,
+            float2(35 * SCALE - xlen, 35 * SCALE - hburgydif),
+            float2(35 * SCALE + xlen, 35 * SCALE - hburgydif),
+            1
+        )
+    );
+    xsdf = opUnion(
+        xsdf,
+        capsuleSDF(
+            px,
+            float2(35 * SCALE - xlen, 35 * SCALE + hburgydif),
+            float2(35 * SCALE + xlen, 35 * SCALE + hburgydif),
+            1
+        )
+    );
+    xsdf = clamp(xsdf, 0.0, 1.0);
+    float4 c = lerp(
+        mytexture.Sample(mysampler, imgpx),
+        grey,
+        imgsdf
+    );
+    c = lerp(c, orange, 1.0 - barsdf);
+    c = lerp(c, orange * 1.5, 1.0 - playbtnsdf);
+    c = lerp(c, paint, 1.0 - xsdf);
+    return brightness * c;
 }
