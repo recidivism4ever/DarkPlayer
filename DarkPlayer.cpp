@@ -377,25 +377,42 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Text format
     IDWriteTextFormat* textFormat = nullptr;
+    IDWriteTextFormat* textFormat2 = nullptr;
     pDWriteFactory->CreateTextFormat(
         L"Bahnschrift", // Font family name
         NULL,
         DWRITE_FONT_WEIGHT_NORMAL,
         DWRITE_FONT_STYLE_NORMAL,
         DWRITE_FONT_STRETCH_NORMAL,
-        24.0f,
+        31.0f,
         L"en-us", // Locale
         &textFormat
     );
-    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+    pDWriteFactory->CreateTextFormat(
+        L"Bahnschrift", // Font family name
+        NULL,
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        14.0f,
+        L"en-us", // Locale
+        &textFormat2
+    );
+    textFormat2->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 
     D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
 
     // Text brush
     ID2D1SolidColorBrush* textBrush = nullptr;
     d2dRenderTarget->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::White),
+        D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f),
         &textBrush
+    );
+    ID2D1SolidColorBrush* textBrush2 = nullptr;
+    d2dRenderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.4588235294117647f, 0.4666666666666667f, 0.47843137254901963f),
+        &textBrush2
     );
 
     // Main Loop
@@ -446,8 +463,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             text,
             wcslen(text),
             textFormat,
-            D2D1::RectF(0, PLAYER_HEIGHT/2, PLAYER_WIDTH, PLAYER_HEIGHT/2+200),
+            D2D1::RectF(0, 288*SCALE, PLAYER_WIDTH, 308*SCALE),
             textBrush
+        );
+
+        const wchar_t* text2 = L"Future ft. The Weeknd";
+        d2dRenderTarget->DrawText(
+            text2,
+            wcslen(text2),
+            textFormat2,
+            D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
+            textBrush2
         );
 
         d2dRenderTarget->EndDraw();

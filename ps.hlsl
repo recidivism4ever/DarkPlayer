@@ -137,6 +137,11 @@ float capsuleSDF(
     //return abs(sqrt(dot(K, K)) - R); // outline
 }
 
+float sdCircle(float2 p, float r)
+{
+    return length(p) - r;
+}
+
 float map(float3 p)
 {
     float a = opSmoothUnion(
@@ -242,18 +247,45 @@ float4 ps_main(VS_Output input) : SV_Target
         1.0
     );
     const float4 white = float4(1, 1, 1, 1);
+    const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
     float barsdf = clamp(capsuleSDF(
         px.xy, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
         float2(22 * SCALE + proglen,
         PLAYER_HEIGHT - 157 * SCALE), 3
     ), 0.0, 1.0);
-    return brightness*lerp(
-        lerp(
-            mytexture.Sample(mysampler, imgpx), 
-            grey,
-            imgsdf
+    float playbtnsdf = clamp(sdCircle(
+        px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 21.0 * SCALE
+    ), 0.0, 1.0);
+    float xlen = 4.0;
+    float xsdf = clamp(opUnion(
+        capsuleSDF(
+            px, 
+            float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE - xlen),
+            float2(PLAYER_WIDTH - 35 * SCALE + xlen, 35 * SCALE + xlen),
+            1
         ),
-        orange,
-        1.0-barsdf
+        capsuleSDF(
+            px,
+            float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE + xlen),
+            float2(PLAYER_WIDTH - 35 * SCALE + xlen, 35 * SCALE - xlen),
+            1
+        )),
+     0.0, 1.0);
+    return brightness * lerp(
+        lerp(
+            lerp(
+                lerp(
+                    mytexture.Sample(mysampler, imgpx),
+                    grey,
+                    imgsdf
+                ),
+                orange,
+                1.0 - barsdf
+            ),
+            orange * 1.5,
+            1.0 - playbtnsdf
+        ),
+    paint,
+    1.0 - xsdf
     );
 }
