@@ -28,11 +28,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
         return 0;
     }
-    case WM_NCACTIVATE: {
-        // Prevents window frame reappearing on window activation
-        // in "basic" theme, where no aero shadow is present.
-        return 1;
-    }
     case WM_NCHITTEST: {
         // Let the default procedure handle resizing areas
         LRESULT hit = DefWindowProc(hwnd, msg, wparam, lparam);
