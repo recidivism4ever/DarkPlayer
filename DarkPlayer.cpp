@@ -115,19 +115,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             return GetLastError();
         }
 
-#define SCALE 3/2
-        RECT initialRect = { 0, 0, 240*SCALE, 518*SCALE };
-        //AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
-        LONG initialWidth = initialRect.right - initialRect.left;
-        LONG initialHeight = initialRect.bottom - initialRect.top;
-
         hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
             winClass.lpszClassName,
             L"01. Initialising Direct3D 11",
-            WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME | WS_VISIBLE,
+            WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX | WS_VISIBLE,
             CW_USEDEFAULT, CW_USEDEFAULT,
-            initialWidth,
-            initialHeight,
+            PLAYER_WIDTH,
+            PLAYER_HEIGHT,
             0, 0, hInstance, 0);
 
         if (!hwnd) {
@@ -214,7 +208,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc = {};
         d3d11SwapChainDesc.Width = 0; // use window width
         d3d11SwapChainDesc.Height = 0; // use window height
-        d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         d3d11SwapChainDesc.SampleDesc.Count = 1;
         d3d11SwapChainDesc.SampleDesc.Quality = 0;
         d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -317,7 +311,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UINT texWidth, texHeight, texNumChannels;
     BYTE* testTextureBytes = load_image(
         false, &texWidth, &texHeight, 
-        L"C:/Users/destr/coding/DarkPlayer/test.jpg"
+        L"C:/Users/destr/coding/DarkPlayer/test3.jpg"
     );
     assert(testTextureBytes);
     int texBytesPerRow = 4 * texWidth;
@@ -328,7 +322,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     textureDesc.Height = texHeight;
     textureDesc.MipLevels = 1;
     textureDesc.ArraySize = 1;
-    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
     textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;

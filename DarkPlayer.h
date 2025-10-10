@@ -18,3 +18,6 @@
 void init_image_loader();
 
 BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path);
+
+#include "playerdefs.h"
+

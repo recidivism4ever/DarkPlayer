@@ -1,0 +1,3 @@
+#define SCALE 3/2
+#define PLAYER_WIDTH 240*SCALE
+#define PLAYER_HEIGHT 518*SCALE

@@ -7,9 +7,9 @@ void init_image_loader() {
 }
 
 BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path) {
-    IWICBitmapDecoder* pDecoder = 0;
-    IWICBitmapFrameDecode* pFrame = 0;
-    IWICBitmapSource* convertedSrc = 0;
+    IWICBitmapDecoder* pDecoder = NULL;
+    IWICBitmapFrameDecode* pFrame = NULL;
+    IWICBitmapSource* convertedSrc = NULL;
 
     HRESULT hr = ifactory->CreateDecoderFromFilename(path, NULL, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &pDecoder);
     pDecoder->GetFrame(0, &pFrame);
@@ -22,11 +22,11 @@ BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path) 
         IWICBitmapFlipRotator* pFlipRotator;
         ifactory->CreateBitmapFlipRotator(&pFlipRotator);
         pFlipRotator->Initialize(convertedSrc, WICBitmapTransformFlipVertical);
-        pFlipRotator->CopyPixels(0, rowPitch, size, pixels);
+        pFlipRotator->CopyPixels(NULL, rowPitch, size, pixels);
         pFlipRotator->Release();
     }
     else {
-        convertedSrc->CopyPixels(0, rowPitch, size, pixels);
+        convertedSrc->CopyPixels(NULL, rowPitch, size, pixels);
     }
     convertedSrc->Release();
     pFrame->Release();
