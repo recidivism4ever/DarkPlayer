@@ -10,10 +10,14 @@
 #include <d3d11_1.h>
 #pragma comment(lib, "d3d11.lib")
 
-#include <assert.h>
-
 #include <wincodec.h>
 #pragma comment(lib, "windowscodecs.lib")
+
+#include <dwrite.h>
+#pragma comment(lib, "dwrite.lib")
+
+#include <assert.h>
+
 
 void init_image_loader();
 

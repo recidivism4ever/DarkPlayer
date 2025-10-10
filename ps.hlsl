@@ -4,6 +4,11 @@
 Texture2D mytexture : register(t0);
 SamplerState mysampler : register(s0);
 
+#define imgradius ((170.0 / 2) * SCALE)
+#define expradius (imgradius + 4)
+#define progress 0.33
+#define proglen (progress * (PLAYER_WIDTH - 44 * SCALE))
+
 float random(in float2 st)
 {
     return frac(sin(dot(st.xy,
@@ -93,6 +98,45 @@ float sdGoPiece(float3 p, float r, float d)
     );
 }
 
+float sdVerticalCapsule(float3 p, float h, float r)
+{
+    p.y -= clamp(p.y, 0.0, h);
+    return length(p) - r;
+}
+
+float sdHorizontalCapsule(float3 p, float h, float r)
+{
+    p.x -= clamp(p.x, 0.0, h);
+    return length(p) - r;
+}
+
+float sd2dCapsule(float2 p, float2 a, float2 b, float r)
+{
+    float2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h) - r;
+}
+
+float capsuleSDF(
+    in float2 P, // Sample coordinates
+    in float2 B, // Capsule begin coordinates
+    in float2 E, // Capsule end coordinates
+    in float R)  // Thickness
+{
+    float2 BP = P - B; // from B to P
+    float2 BE = E - B; // from B to E
+    
+    // dot(SP, SE) - squared length of projection SP to SE.
+    // dot(SE, SE) - capsule squared length.
+    float t = clamp(dot(BP, BE) / dot(BE, BE), 0.0, 1.0);
+
+    // Minimal distance from P to line BE * t.
+    float2 K = BP - BE * t;
+
+    return sqrt(dot(K, K)) - R;
+    //return abs(sqrt(dot(K, K)) - R); // outline
+}
+
 float map(float3 p)
 {
     float a = opSmoothUnion(
@@ -101,13 +145,33 @@ float map(float3 p)
         1.0
     );
     a = opSmoothSubtraction(
-        sdGoPiece(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75*2 * SCALE, 0), 26.0 * SCALE, 26.0 * SCALE / 2),
+        sdGoPiece(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), 26.0 * SCALE, 26.0 * SCALE / 2),
+        a,
+        1.0
+    );
+    a = opSmoothSubtraction(
+        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), PLAYER_WIDTH - 44 * SCALE, 3),
+        a,
+        1.0
+    );
+    a = opSmoothUnion(
+        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), proglen, 3),
         a,
         1.0
     );
     a = opSmoothUnion(
         a,
-        sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * 3 * SCALE, 0), 40, 30, 10, 10),
+        sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
+        8.0
+    );
+    a = opSmoothUnion(
+        a,
+        sdRoundedTruncatedCone(p - float3(35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
+        8.0
+    );
+    a = opSmoothUnion(
+        a,
+        sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 164 * SCALE, 0), imgradius+10, imgradius+10 - 10, 10, 10),
         8.0
     );
     return a;
@@ -156,12 +220,10 @@ float3 raymarchvertical(float2 ro)
 float4 ps_main(VS_Output input) : SV_Target
 {
     const float3 lightdir = normalize(float3(0.25, 0.25, -1));
+    const float2 imgcenter = float2(PLAYER_WIDTH / 2, 164 * SCALE);
     float2 px = input.uv;
     px.x *= (float) PLAYER_WIDTH;
     px.y *= (float) PLAYER_HEIGHT;
-    float2 imgcenter = float2(PLAYER_WIDTH / 2, 164*SCALE);
-    float imgradius = (170.0 / 2) * SCALE;
-    float expradius = imgradius + 4;
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
     float3 norm = raymarchvertical(px);
@@ -173,10 +235,25 @@ float4 ps_main(VS_Output input) : SV_Target
         0.2235294117647059,
         0.24313725490196078,
         1.0);
+    const float4 orange = float4(
+        0.9333333333333333,
+        0.3333333333333333,
+        0.050980392156862744,
+        1.0
+    );
     const float4 white = float4(1, 1, 1, 1);
+    float barsdf = clamp(capsuleSDF(
+        px.xy, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
+        float2(22 * SCALE + proglen,
+        PLAYER_HEIGHT - 157 * SCALE), 3
+    ), 0.0, 1.0);
     return brightness*lerp(
-        mytexture.Sample(mysampler, imgpx), 
-        grey,
-        imgsdf
+        lerp(
+            mytexture.Sample(mysampler, imgpx), 
+            grey,
+            imgsdf
+        ),
+        orange,
+        1.0-barsdf
     );
 }
