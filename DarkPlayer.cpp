@@ -6,12 +6,35 @@
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
 
+#define TICKRATE 20
+float remainingTick = 0.0f;
+LARGE_INTEGER freq, t0, t1;
+double countsPerTick, accum;
+
 int prevmousex, prevmousey, mousex, mousey;
 int btnid, hoveredid, ldownid = -1;
 int actiontype;
 #define ACTION_MOVE 0
 #define ACTION_LDOWN 1
 #define ACTION_LUP 2
+
+float progress = .75f;
+#define PANEL_LEFT_STOP (-PLAYER_WIDTH/2 - 32)
+#define PANEL_RIGHT_STOP (PLAYER_WIDTH/2)
+#define SWINGOUT_TICKS 10
+float prevpanelx = PANEL_LEFT_STOP;
+float curpanelx = PANEL_LEFT_STOP;
+float panelx = PANEL_LEFT_STOP;
+int panelticks = 0;
+
+enum State {
+    DEFAULT,
+    PANEL_SWING_OUT,
+    PANEL_SWING_IN,
+    PANEL
+};
+
+enum State state = DEFAULT;
 
 float dist(float ax, float ay, float bx, float by) {
     float abx = bx - ax;
@@ -88,11 +111,59 @@ void doButtons(LPARAM lparam, int action) {
     }
     if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
         printf("tracklist\n");
+        if (state == DEFAULT) {
+            state = PANEL_SWING_OUT;
+            panelticks = 0;
+        }
+        else if (state == PANEL) {
+            state = PANEL_SWING_IN;
+        }
     }
     if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
         printf("close\n");
         PostQuitMessage(0);
     }
+}
+
+float clamp(float x, float lowerlimit = 0.0f, float upperlimit = 1.0f) {
+    if (x < lowerlimit) return lowerlimit;
+    if (x > upperlimit) return upperlimit;
+    return x;
+}
+
+float smootherstep(float edge0, float edge1, float x) {
+    // Scale, and clamp x to 0..1 range
+    x = clamp((x - edge0) / (edge1 - edge0));
+
+    return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
+}
+
+void tick() {
+    prevpanelx = curpanelx;
+    if (state == PANEL_SWING_OUT) {
+        panelticks++;
+        curpanelx = PANEL_LEFT_STOP + (PANEL_RIGHT_STOP - PANEL_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)panelticks / SWINGOUT_TICKS));
+        if (panelticks == SWINGOUT_TICKS) {
+            state = PANEL;
+        }
+    }
+    else if (state == PANEL_SWING_IN) {
+        panelticks--;
+        curpanelx = PANEL_LEFT_STOP + (PANEL_RIGHT_STOP - PANEL_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)panelticks / SWINGOUT_TICKS));
+        if (panelticks == 0) {
+            state = DEFAULT;
+        }
+    }
+}
+
+void tickloop() {
+    while (accum > countsPerTick) {
+        tick();
+        accum -= countsPerTick;
+    }
+    remainingTick = accum / countsPerTick;
+
+    panelx = prevpanelx + (curpanelx - prevpanelx) * remainingTick;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -581,6 +652,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &textBrush2
     );
 
+    QueryPerformanceFrequency(&freq);
+    countsPerTick = (double)freq.QuadPart / TICKRATE;
+    QueryPerformanceCounter(&t0);
+    accum = 0.0;
+
     // Main Loop
     bool isRunning = true;
     while (isRunning)
@@ -594,11 +670,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessageW(&msg);
         }
 
+        QueryPerformanceCounter(&t1);
+        LARGE_INTEGER dif;
+        dif.QuadPart = t1.QuadPart - t0.QuadPart;
+        t0 = t1;
+        accum += (double)dif.QuadPart;
+        tickloop();
+
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
         d3d11DeviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
         Constants* constants = (Constants*)(mappedSubresource.pData);
-        constants->progress = 0.5f;
-        constants->panelx = 0.25f;
+        constants->progress = progress;
+        constants->panelx = panelx;
         d3d11DeviceContext->Unmap(constantBuffer, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
@@ -629,8 +712,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         // Perform D2D rendering
         d2dRenderTarget->BeginDraw();
 
-        // Clear the D2D surface if needed (e.g., if rendering a transparent overlay)
-        // d2dRenderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
+        D2D1_RECT_F clipRect = D2D1::RectF(panelx+PLAYER_WIDTH/2+8, 0.0f, PLAYER_WIDTH, PLAYER_HEIGHT);
+        
+        d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
         // Draw the text
         const wchar_t* text = L"Low Life";
@@ -650,6 +734,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
             textBrush2
         );
+
+        d2dRenderTarget->PopAxisAlignedClip();
 
         d2dRenderTarget->EndDraw();
 

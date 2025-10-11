@@ -173,6 +173,18 @@ float sdEquilateralTriangle(in float2 p, in float r)
     return -length(p) * sign(p.y);
 }
 
+float sdRoundBox(float3 p, float3 b, float r)
+{
+    float3 q = abs(p) - b + r;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
+}
+
+float sdBox(float2 p, float2 b)
+{
+    float2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 float map(float3 p)
 {
     float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
@@ -219,6 +231,11 @@ float map(float3 p)
     a = opSmoothUnion(
         a,
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 164 * SCALE, 0), imgradius+10, imgradius+10 - 10, 10, 10),
+        8.0
+    );
+    a = opSmoothUnion(
+        a,
+        sdRoundBox(p - float3(panelx, PLAYER_HEIGHT / 2, 0), float3(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT + 8, 50), 4),
         8.0
     );
     return a;
@@ -390,5 +407,10 @@ float4 ps_main(VS_Output input) : SV_Target
     float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
     skipsdf = opUnion(skipsdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
     skipsdf = clamp(skipsdf, 0.0, 1.0);
-    return lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
+    float boxsdf = sdBox(px - float2(panelx, PLAYER_HEIGHT / 2), float2(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT / 2 + 8));
+    boxsdf = clamp(boxsdf, 0.0, 1.0);
+    float4 c1 = brightness * grey;
+    float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
+    finalcolor = lerp(finalcolor, c1, 1.0 - boxsdf);
+    return finalcolor;
 }
