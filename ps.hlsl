@@ -341,5 +341,8 @@ float4 ps_main(VS_Output input) : SV_Target
     c = lerp(c, barcolor, 1.0 - barsdf);
     c = lerp(c, orange * 1.5, 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
-    return brightness * c;
+    float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
+    skipsdf = opUnion(skipsdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
+    skipsdf = clamp(skipsdf, 0.0, 1.0);
+    return lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
 }
