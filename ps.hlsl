@@ -149,6 +149,26 @@ float sdRing(float2 p, float outerRadius, float innerRadius)
     return abs(sdCircle(p, outerRadius)) - innerRadius;
 }
 
+float2 rotate(float2 samplePosition, float rotation)
+{
+    const float PI = 3.14159;
+    float angle = rotation * PI * 2 * -1;
+    float sine, cosine;
+    sincos(angle, sine, cosine);
+    return float2(cosine * samplePosition.x + sine * samplePosition.y, cosine * samplePosition.y - sine * samplePosition.x);
+}
+
+float sdEquilateralTriangle(in float2 p, in float r)
+{
+    const float k = sqrt(3.0);
+    p.x = abs(p.x) - r;
+    p.y = p.y + r / k;
+    if (p.x + k * p.y > 0.0)
+        p = float2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+    p.x -= clamp(p.x, -2.0 * r, 0.0);
+    return -length(p) * sign(p.y);
+}
+
 float map(float3 p)
 {
     float a = opSmoothUnion(
@@ -269,8 +289,13 @@ float4 ps_main(VS_Output input) : SV_Target
         0.12941176470588237,
         1.0
     );
+    const float4 white = float4(
+        1.0,
+        0.9882352941176471,
+        0.984313725490196,
+        1.0
+    );
     const float4 barcolor = lerp(orange, blue, (max(px.x, 22 * SCALE) - 22 * SCALE) / proglen);
-    const float4 white = float4(1, 1, 1, 1);
     const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
     float barsdf = capsuleSDF(
         px, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
@@ -333,13 +358,11 @@ float4 ps_main(VS_Output input) : SV_Target
         )
     );
     xsdf = clamp(xsdf, 0.0, 1.0);
-    float4 c = lerp(
-        mytexture.Sample(mysampler, imgpx),
-        grey,
-        imgsdf
-    );
+    float playsdf = sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 0.25), 6) - 1.0;
+    playsdf = clamp(playsdf, 0.0, 1.0);
+    float4 c = lerp(mytexture.Sample(mysampler, imgpx), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
-    c = lerp(c, orange * 1.5, 1.0 - playbtnsdf);
+    c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
     float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
     skipsdf = opUnion(skipsdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
