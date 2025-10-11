@@ -360,10 +360,27 @@ float4 ps_main(VS_Output input) : SV_Target
     xsdf = clamp(xsdf, 0.0, 1.0);
     float playsdf = sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 0.25), 6) - 1.0;
     playsdf = clamp(playsdf, 0.0, 1.0);
+    #define skipxdist 5
+    #define skipsz 4
+    float sksymbsdf = sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH - 56 * SCALE - skipxdist, PLAYER_HEIGHT - 75 * SCALE), 0.25), skipsz) - 1.0;
+    sksymbsdf = opSmoothUnion(
+        sksymbsdf,
+        sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH - 56 * SCALE + skipxdist, PLAYER_HEIGHT - 75 * SCALE), 0.25), skipsz) - 1.0,
+        0.5
+    );
+    float backsdf = sdEquilateralTriangle(rotate(px - float2(56 * SCALE - skipxdist, PLAYER_HEIGHT - 75 * SCALE), 0.75), skipsz) - 1.0;
+    backsdf = opSmoothUnion(
+        backsdf,
+        sdEquilateralTriangle(rotate(px - float2(56 * SCALE + skipxdist, PLAYER_HEIGHT - 75 * SCALE), 0.75), skipsz) - 1.0,
+        0.5
+    );
+    sksymbsdf = opUnion(sksymbsdf, backsdf);
+    sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
     float4 c = lerp(mytexture.Sample(mysampler, imgpx), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
     c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
+    c = lerp(c, paint * 1.5, 1.0 - sksymbsdf);
     float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
     skipsdf = opUnion(skipsdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
     skipsdf = clamp(skipsdf, 0.0, 1.0);
