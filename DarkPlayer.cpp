@@ -103,24 +103,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         winClass.style = CS_HREDRAW | CS_VREDRAW;
         winClass.lpfnWndProc = &WndProc;
         winClass.hInstance = hInstance;
-        winClass.hIcon = LoadIconW(0, IDI_APPLICATION);
+        winClass.hIcon = LoadIconW(0, MAKEINTRESOURCE(IDI_DARKPLAYER));
         winClass.hCursor = LoadCursorW(0, IDC_ARROW);
-        winClass.lpszClassName = L"MyWindowClass";
-        winClass.hIconSm = LoadIconW(0, IDI_APPLICATION);
+        winClass.lpszClassName = L"DarkPlayer";
+        winClass.hIconSm = LoadIconW(0, MAKEINTRESOURCE(IDI_DARKPLAYER));
 
         if (!RegisterClassExW(&winClass)) {
             MessageBoxA(0, "RegisterClassEx failed", "Fatal Error", MB_OK);
             return GetLastError();
         }
 
+        /*
         RECT initialRect = { 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT };
         AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
         LONG initialWidth = initialRect.right - initialRect.left;
         LONG initialHeight = initialRect.bottom - initialRect.top;
+        */
 
         hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
             winClass.lpszClassName,
-            L"01. Initialising Direct3D 11",
+            winClass.lpszClassName,
             WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX | WS_VISIBLE,
             CW_USEDEFAULT, CW_USEDEFAULT,
             PLAYER_WIDTH+16,

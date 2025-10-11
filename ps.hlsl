@@ -8,6 +8,8 @@ SamplerState mysampler : register(s0);
 #define expradius (imgradius + 4)
 #define progress 0.33
 #define proglen (progress * (PLAYER_WIDTH - 44 * SCALE))
+#define pbradius 30
+#define skipradius 28
 
 float random(in float2 st)
 {
@@ -142,25 +144,40 @@ float sdCircle(float2 p, float r)
     return length(p) - r;
 }
 
+float sdRing(float2 p, float outerRadius, float innerRadius)
+{
+    return abs(sdCircle(p, outerRadius)) - innerRadius;
+}
+
 float map(float3 p)
 {
     float a = opSmoothUnion(
         sdPlane(p, float3(0,0,1), 0),
-        sdGoPiece(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), 26.0 * SCALE, 26.0 * SCALE/2),
-        1.0
+        sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), pbradius, pbradius-2, 5, 5),
+        8.0
     );
-    a = opSmoothSubtraction(
-        sdGoPiece(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), 26.0 * SCALE, 26.0 * SCALE / 2),
+    a = opSmoothUnion(
         a,
-        1.0
+        sdRoundedTruncatedCone(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), skipradius, skipradius - 2, 5, 5),
+        8.0
     );
-    a = opSmoothSubtraction(
-        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), PLAYER_WIDTH - 44 * SCALE, 3),
+    a = opSmoothUnion(
+        a,
+        sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), skipradius, skipradius - 2, 5, 5),
+        8.0
+    );
+    a = opSmoothUnion(
+        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), proglen, 3),
         a,
         1.0
     );
     a = opSmoothUnion(
-        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), proglen, 3),
+        sdRoundedTruncatedCone(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), 10, 9, 5, 1),
+        a,
+        4.0
+    );
+    a = opSmoothSubtraction(
+        sdHorizontalCapsule(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), PLAYER_WIDTH - 44 * SCALE - proglen, 3),
         a,
         1.0
     );
@@ -246,15 +263,32 @@ float4 ps_main(VS_Output input) : SV_Target
         0.050980392156862744,
         1.0
     );
+    const float4 blue = float4(
+        0.8627450980392157,
+        0.6627450980392157,
+        0.12941176470588237,
+        1.0
+    );
+    const float4 barcolor = lerp(orange, blue, (max(px.x, 22 * SCALE) - 22 * SCALE) / proglen);
     const float4 white = float4(1, 1, 1, 1);
     const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
-    float barsdf = clamp(capsuleSDF(
-        px.xy, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
+    float barsdf = capsuleSDF(
+        px, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
         float2(22 * SCALE + proglen,
         PLAYER_HEIGHT - 157 * SCALE), 3
-    ), 0.0, 1.0);
+    );
+    barsdf = opUnion(
+        barsdf, 
+        sdCircle(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 12)
+    );
+    barsdf = opSmoothSubtraction(
+        sdRing(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 10, 6),
+        barsdf,
+        0.25
+    );
+    barsdf = clamp(barsdf, 0.0, 1.0);
     float playbtnsdf = clamp(sdCircle(
-        px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 21.0 * SCALE
+        px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), pbradius+10
     ), 0.0, 1.0);
     #define xlen 4.0
     #define hburgydif 4.0
@@ -304,7 +338,7 @@ float4 ps_main(VS_Output input) : SV_Target
         grey,
         imgsdf
     );
-    c = lerp(c, orange, 1.0 - barsdf);
+    c = lerp(c, barcolor, 1.0 - barsdf);
     c = lerp(c, orange * 1.5, 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
     return brightness * c;
