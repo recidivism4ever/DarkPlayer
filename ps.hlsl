@@ -1,13 +1,17 @@
 #include "hdr.hlsli"
 #include "playerdefs.h"
 
+cbuffer constants : register(b0)
+{
+    float progress;
+    float panelx;
+};
+
 Texture2D mytexture : register(t0);
 SamplerState mysampler : register(s0);
 
 #define imgradius ((170.0 / 2) * SCALE)
 #define expradius (imgradius + 4)
-#define progress 0.33
-#define proglen (progress * (PLAYER_WIDTH - 44 * SCALE))
 #define pbradius 30
 #define skipradius 28
 
@@ -171,6 +175,7 @@ float sdEquilateralTriangle(in float2 p, in float r)
 
 float map(float3 p)
 {
+    float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
     float a = opSmoothUnion(
         sdPlane(p, float3(0,0,1), 0),
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), pbradius, pbradius-2, 5, 5),
@@ -295,6 +300,7 @@ float4 ps_main(VS_Output input) : SV_Target
         0.984313725490196,
         1.0
     );
+    float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
     const float4 barcolor = lerp(orange, blue, (max(px.x, 22 * SCALE) - 22 * SCALE) / proglen);
     const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
     float barsdf = capsuleSDF(

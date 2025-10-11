@@ -488,6 +488,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     free(testTextureBytes);
 
+    // Create Constant Buffer
+    struct Constants
+    {
+        float progress;
+        float panelx;
+    };
+
+    ID3D11Buffer* constantBuffer;
+    {
+        D3D11_BUFFER_DESC constantBufferDesc = {};
+        // ByteWidth must be a multiple of 16, per the docs
+        constantBufferDesc.ByteWidth = sizeof(Constants) + 0xf & 0xfffffff0;
+        constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+        constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+        HRESULT hResult = d3d11Device->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer);
+        assert(SUCCEEDED(hResult));
+    }
+
     ID2D1Factory* pD2DFactory = NULL;
     IDWriteFactory* pDWriteFactory = NULL;
     IDWriteTextFormat* pTextFormat = NULL;
@@ -574,6 +594,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessageW(&msg);
         }
 
+        D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+        d3d11DeviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
+        Constants* constants = (Constants*)(mappedSubresource.pData);
+        constants->progress = 0.5f;
+        constants->panelx = 0.25f;
+        d3d11DeviceContext->Unmap(constantBuffer, 0);
+
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
         d3d11DeviceContext->ClearRenderTargetView(d3d11FrameBufferView, backgroundColor);
 
@@ -589,6 +616,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d3d11DeviceContext->VSSetShader(vertexShader, nullptr, 0);
         d3d11DeviceContext->PSSetShader(pixelShader, nullptr, 0);
+
+        d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer);
 
         d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
         d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
