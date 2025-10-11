@@ -6,6 +6,8 @@
 #define NOMINMAX
 #define UNICODE
 #include <windows.h>
+#include <math.h>
+#include <stdio.h>
 
 #include <d3d11_1.h>
 #pragma comment(lib, "d3d11.lib")

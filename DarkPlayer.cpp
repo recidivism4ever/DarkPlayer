@@ -3,8 +3,97 @@
 #include "vs.h"
 #include "ps.h"
 
-#define GET_X_PARAM(lp) ((int)(short)LOWORD(lp))
-#define GET_Y_PARAM(lp) ((int)(short)HIWORD(lp))
+#define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
+#define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
+
+int prevmousex, prevmousey, mousex, mousey;
+int btnid, hoveredid, ldownid = -1;
+int actiontype;
+#define ACTION_MOVE 0
+#define ACTION_LDOWN 1
+#define ACTION_LUP 2
+
+float dist(float ax, float ay, float bx, float by) {
+    float abx = bx - ax;
+    float aby = by - ay;
+    return sqrtf(abx * abx + aby * aby);
+}
+
+float lineSegDistToPoint(float ax, float ay, float bx, float by, float cx, float cy) {
+    if (ax == bx && ay == by) {
+        return dist(ax, ay, cx, cy);
+    }
+
+    float acx = cx - ax;
+    float acy = cy - ay;
+
+    float abx = bx - ax;
+    float aby = by - ay;
+
+    float k = (acx * abx + acy * aby) / (abx * abx + aby * aby);
+
+    float dx = ax + k * abx;
+    float dy = ay + k * aby;
+
+    float adx = dx - ax;
+    float ady = dy - ay;
+
+    float p = fabsf(abx) > fabsf(aby) ? adx / abx : ady / aby;
+
+    if (p <= 0.0) {
+        return dist(cx, cy, ax, ay);
+    }
+    else if (p >= 1.0) {
+        return dist(cx, cy, bx, by);
+    }
+
+    return dist(cx, cy, dx, dy);
+}
+
+bool button(float x, float y, float radius) {
+    if (lineSegDistToPoint(prevmousex, prevmousey, mousex, mousey, x, y) <= radius) {
+        hoveredid = btnid;
+        switch (actiontype) {
+        case ACTION_MOVE:
+            break;
+        case ACTION_LDOWN:
+            ldownid = btnid;
+            break;
+        case ACTION_LUP:
+            if (ldownid == btnid) return true;
+            break;
+        }
+    }
+    btnid++;
+    return false;
+}
+
+void doButtons(LPARAM lparam, int action) {
+    prevmousex = mousex;
+    prevmousey = mousey;
+    mousex = GET_X_LPARAM(lparam);
+    mousey = GET_Y_LPARAM(lparam);
+    actiontype = action;
+
+    btnid = 0;
+    hoveredid = -1;
+    if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
+        printf("play/pause\n");
+    }
+    if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
+        printf("skip backward\n");
+    }
+    if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
+        printf("skip forward\n");
+    }
+    if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
+        printf("tracklist\n");
+    }
+    if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
+        printf("close\n");
+        PostQuitMessage(0);
+    }
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -51,8 +140,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         int frame_y = GetSystemMetricsForDpi(SM_CYFRAME, dpi);
         int padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
         POINT cursor_point = { 0 };
-        cursor_point.x = GET_X_PARAM(lparam);
-        cursor_point.y = GET_Y_PARAM(lparam);
+        cursor_point.x = GET_X_LPARAM(lparam);
+        cursor_point.y = GET_Y_LPARAM(lparam);
         ScreenToClient(hwnd, &cursor_point);
 
         // Since we are drawing our own caption, this needs to be a custom test
@@ -71,6 +160,32 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
             SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
         );
         break;
+    }
+    case WM_MOUSEMOVE: {
+        doButtons(lparam, ACTION_MOVE);
+        break;
+    }
+    case WM_LBUTTONDOWN: {
+        doButtons(lparam, ACTION_LDOWN);
+        break;
+    }
+    case WM_LBUTTONUP: {
+        doButtons(lparam, ACTION_LUP);
+        ldownid = -1;
+        break;
+    }
+    case WM_SETCURSOR:
+    {
+        // Check if the cursor is over the client area of the window
+        if (hoveredid >= 0)
+        {
+            // Load the hand cursor
+            HCURSOR hHandCursor = LoadCursor(NULL, IDC_HAND);
+            // Set the cursor to the hand cursor
+            SetCursor(hHandCursor);
+            return TRUE; // Indicate that the message has been handled
+        }
+        return DefWindowProcW(hwnd, msg, wparam, lparam);
     }
     case WM_KEYDOWN:
     {
@@ -91,6 +206,34 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+#if _DEBUG
+    if (GetConsoleWindow() == NULL) {
+
+        // Allocate a new console for this process
+        if (!AllocConsole()) {
+            MessageBox(NULL, L"Failed to allocate console!", L"Error", MB_ICONERROR);
+        }
+
+        // Redirect standard C I/O (printf)
+        FILE* p_stdout;
+        FILE* p_stdin;
+        FILE* p_stderr;
+
+        // Use freopen_s to reassign the standard streams
+        // "CONOUT$" is a special name for the console output device
+        if (freopen_s(&p_stdout, "CONOUT$", "w", stdout) != 0) {
+            MessageBox(NULL, L"Failed to redirect stdout!", L"Error", MB_ICONERROR);
+        }
+        if (freopen_s(&p_stdin, "CONIN$", "r", stdin) != 0) {
+            MessageBox(NULL, L"Failed to redirect stdin!", L"Error", MB_ICONERROR);
+        }
+        if (freopen_s(&p_stderr, "CONOUT$", "w", stderr) != 0) {
+            MessageBox(NULL, L"Failed to redirect stderr!", L"Error", MB_ICONERROR);
+        }
+
+    }
+#endif
+
     CoInitialize(0);
 
     init_image_loader();
