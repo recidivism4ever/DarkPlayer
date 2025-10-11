@@ -107,6 +107,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         winClass.hCursor = LoadCursorW(0, IDC_ARROW);
         winClass.lpszClassName = L"DarkPlayer";
         winClass.hIconSm = LoadIconW(0, MAKEINTRESOURCE(IDI_DARKPLAYER));
+        winClass.hbrBackground = CreateSolidBrush(RGB(37,40,44));
 
         if (!RegisterClassExW(&winClass)) {
             MessageBoxA(0, "RegisterClassEx failed", "Fatal Error", MB_OK);
