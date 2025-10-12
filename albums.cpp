@@ -38,6 +38,8 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
             HDC hdc = GetDC(NULL);
             GetDIBits(hdc, hbm, 0, THUMBNAIL_SIZE, a->thumbnail, (BITMAPINFO*)&bih, DIB_RGB_COLORS);
             ReleaseDC(NULL, hdc);
+
+            a->thumbnailFound = true;
         }
     }
     return hr;
@@ -172,7 +174,9 @@ void findMusicInFolder(IShellItem* psiFolder,
                     if (albums[albumTitle].artist.empty()) {
                         albums[albumTitle].artist = getArtist(psi);
                     }
-                    getThumbnail(psi, &(albums[albumTitle]));
+                    if (!albums[albumTitle].thumbnailFound) {
+                        getThumbnail(psi, &(albums[albumTitle]));
+                    }
                     albums[albumTitle].songs.push_back(s);
                     CoTaskMemFree(pwszPath);
                 }

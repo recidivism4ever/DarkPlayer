@@ -57,6 +57,7 @@ struct Song {
 struct Album {
     std::vector<Song> songs;
     std::wstring artist;
+    bool thumbnailFound;
     BYTE thumbnail[THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4];
 };
 
