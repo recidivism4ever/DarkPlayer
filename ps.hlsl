@@ -433,7 +433,7 @@ float4 ps_main(VS_Output input) : SV_Target
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
     float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 0)), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
-    c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
+    c = lerp(c, lerp(orange * 1.7, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
     c = lerp(c, paint * 1.5, 1.0 - sksymbsdf);
     float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
