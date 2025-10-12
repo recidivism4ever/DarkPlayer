@@ -29,6 +29,11 @@
 #include <propsys.h>
 #pragma comment(lib, "Propsys.lib")
 
+#include <iostream>
+#include <string>
+#include <map>
+#include <vector>
+
 #include <assert.h>
 
 

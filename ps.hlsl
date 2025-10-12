@@ -5,6 +5,7 @@ cbuffer constants : register(b0)
 {
     float progress;
     float panelx;
+    int nAlbums;
 };
 
 Texture2D mytexture : register(t0);
@@ -238,6 +239,19 @@ float map(float3 p)
         sdRoundBox(p - float3(panelx, PLAYER_HEIGHT / 2, 0), float3(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT + 8, 50), 4),
         8.0
     );
+    a = opSmoothUnion(
+        a,
+        sdRoundedTruncatedCone(p - float3(panelx + PLAYER_WIDTH/2 - 35 * SCALE, 35 * SCALE, 0), 15, 12, 55, 5),
+        8.0
+    );
+    for (int i = 0; i < nAlbums; i++)
+    {
+        a = opSmoothUnion(
+        a,
+        sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, 70 * SCALE * (i+1), 0), 30, 27, 55, 5),
+        8.0
+    );
+    }
     return a;
 }
 

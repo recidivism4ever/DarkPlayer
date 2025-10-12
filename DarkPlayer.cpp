@@ -26,6 +26,7 @@ float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;
 float panelx = PANEL_LEFT_STOP;
 int panelticks = 0;
+int nAlbums = 5;
 
 enum State {
     DEFAULT,
@@ -569,6 +570,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
         float progress;
         float panelx;
+        int nAlbums;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -687,6 +689,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         Constants* constants = (Constants*)(mappedSubresource.pData);
         constants->progress = progress;
         constants->panelx = panelx;
+        constants->nAlbums = nAlbums;
         d3d11DeviceContext->Unmap(constantBuffer, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
