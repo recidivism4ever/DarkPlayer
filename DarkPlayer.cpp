@@ -100,28 +100,31 @@ void doButtons(LPARAM lparam, int action) {
 
     btnid = 0;
     hoveredid = -1;
-    if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
-        printf("play/pause\n");
-    }
-    if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
-        printf("skip backward\n");
-    }
-    if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
-        printf("skip forward\n");
-    }
-    if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
-        printf("tracklist\n");
-        if (state == DEFAULT) {
-            state = PANEL_SWING_OUT;
-            panelticks = 0;
+
+    if (state == DEFAULT) {
+        if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
+            printf("play/pause\n");
         }
-        else if (state == PANEL) {
+        if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
+            printf("skip backward\n");
+        }
+        if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
+            printf("skip forward\n");
+        }
+        if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
+            printf("panel out\n");
+            state = PANEL_SWING_OUT;
+        }
+        if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
+            printf("close\n");
+            PostQuitMessage(0);
+        }
+    }
+    else if (state == PANEL) {
+        if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
+            printf("panel in\n");
             state = PANEL_SWING_IN;
         }
-    }
-    if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
-        printf("close\n");
-        PostQuitMessage(0);
     }
 }
 
@@ -308,7 +311,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     CoInitialize(0);
 
     init_image_loader();
-
+    
     // Open a window
     HWND hwnd;
     {

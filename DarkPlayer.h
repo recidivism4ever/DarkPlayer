@@ -21,6 +21,14 @@
 #include <wincodec.h>
 #pragma comment(lib, "windowscodecs.lib")
 
+#include <d3dcsx.h>
+
+#include <shlobj.h>
+#include <propvarutil.h>
+#include <Propkey.h>
+#include <propsys.h>
+#pragma comment(lib, "Propsys.lib")
+
 #include <assert.h>
 
 
