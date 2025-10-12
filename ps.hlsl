@@ -8,7 +8,7 @@ cbuffer constants : register(b0)
     int nAlbums;
 };
 
-Texture2D mytexture : register(t0);
+Texture2DArray mytexture : register(t0);
 SamplerState mysampler : register(s0);
 
 #define imgradius ((170.0 / 2) * SCALE)
@@ -413,7 +413,7 @@ float4 ps_main(VS_Output input) : SV_Target
     );
     sksymbsdf = opUnion(sksymbsdf, backsdf);
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
-    float4 c = lerp(mytexture.Sample(mysampler, imgpx), grey, imgsdf);
+    float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 0)), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
     c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);

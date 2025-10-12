@@ -57,7 +57,8 @@ struct Song {
 struct Album {
     std::vector<Song> songs;
     std::wstring artist;
-    HBITMAP bitmap;
+    BYTE thumbnail[THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4];
 };
 
 std::map<std::wstring, Album> iterateAlbums();
+

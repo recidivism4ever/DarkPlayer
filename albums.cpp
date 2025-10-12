@@ -4,7 +4,9 @@
 
 using namespace Microsoft::WRL;
 
-HRESULT getThumbnail(IShellItem* psi, HBITMAP* phBitmap) {
+HRESULT getThumbnail(IShellItem* psi, Album *a) {
+    if (a->thumbnail == NULL) return NULL;
+
     ComPtr<IThumbnailCache> pThumbnailCache;
     HRESULT hr = CoCreateInstance(CLSID_LocalThumbnailCache, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pThumbnailCache));
     if (FAILED(hr)) {
@@ -15,12 +17,28 @@ HRESULT getThumbnail(IShellItem* psi, HBITMAP* phBitmap) {
     hr = pThumbnailCache->GetThumbnail(
         psi,
         256, // Desired thumbnail size (256x256 pixels)
-        WTS_EXTRACT, // Flag to force extraction if not in cache
+        WTS_EXTRACT, // Flag to force extraction if not in cache. WTS_FORCEEXTRACTION to always extract.
         &pSharedBitmap,
         nullptr,
         nullptr);
     if (SUCCEEDED(hr)) {
-        hr = pSharedBitmap->GetSharedBitmap(phBitmap);
+        HBITMAP hbm;
+        hr = pSharedBitmap->GetSharedBitmap(&hbm);
+        BITMAP bm;
+        int r = GetObject(hbm, sizeof(bm), &bm);
+        if (r) {
+            BITMAPINFOHEADER bih;
+            bih.biSize = sizeof(BITMAPINFOHEADER);
+            bih.biWidth = THUMBNAIL_SIZE;
+            bih.biHeight = -THUMBNAIL_SIZE;
+            bih.biPlanes = 1;
+            bih.biBitCount = 32; // Use 32-bit for consistent RGBX format
+            bih.biCompression = BI_RGB; // Important: Force BI_RGB to avoid issues
+
+            HDC hdc = GetDC(NULL);
+            GetDIBits(hdc, hbm, 0, THUMBNAIL_SIZE, a->thumbnail, (BITMAPINFO*)&bih, DIB_RGB_COLORS);
+            ReleaseDC(NULL, hdc);
+        }
     }
     return hr;
 }
@@ -154,9 +172,7 @@ void findMusicInFolder(IShellItem* psiFolder,
                     if (albums[albumTitle].artist.empty()) {
                         albums[albumTitle].artist = getArtist(psi);
                     }
-                    if (albums[albumTitle].bitmap == NULL) {
-                        getThumbnail(psi, &(albums[albumTitle].bitmap));
-                    }
+                    getThumbnail(psi, &(albums[albumTitle]));
                     albums[albumTitle].songs.push_back(s);
                     CoTaskMemFree(pwszPath);
                 }

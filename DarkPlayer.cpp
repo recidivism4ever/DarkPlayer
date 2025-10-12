@@ -313,7 +313,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     init_image_loader();
 
-    iterateAlbums();
+    std::map<std::wstring, Album> albums = iterateAlbums();
+    std::vector<std::wstring> album_keys;
+    for (const auto& pair : albums) {
+        album_keys.push_back(pair.first);
+    }
     
     // Open a window
     HWND hwnd;
@@ -533,37 +537,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ID3D11SamplerState* samplerState;
     d3d11Device->CreateSamplerState(&samplerDesc, &samplerState);
 
-    // Load Image
-    UINT texWidth, texHeight, texNumChannels;
-    BYTE* testTextureBytes = load_image(
-        false, &texWidth, &texHeight, 
-        L"C:/Users/destr/coding/DarkPlayer/test3.jpg"
-    );
-    assert(testTextureBytes);
-    int texBytesPerRow = 4 * texWidth;
-
     // Create Texture
     D3D11_TEXTURE2D_DESC textureDesc = {};
-    textureDesc.Width = texWidth;
-    textureDesc.Height = texHeight;
+    textureDesc.Width = THUMBNAIL_SIZE;
+    textureDesc.Height = THUMBNAIL_SIZE;
     textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = 1;
+    textureDesc.ArraySize = nAlbums;
     textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
     textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
-    D3D11_SUBRESOURCE_DATA textureSubresourceData = {};
-    textureSubresourceData.pSysMem = testTextureBytes;
-    textureSubresourceData.SysMemPitch = texBytesPerRow;
+    std::vector<D3D11_SUBRESOURCE_DATA> initialData(nAlbums);
+    for (UINT i = 0; i < nAlbums; ++i)
+    {
+        initialData[i].pSysMem = albums[album_keys[i]].thumbnail;
+        initialData[i].SysMemPitch = textureDesc.Width * 4; // 4 bytes per pixel for R8G8B8A8
+    }
 
-    ID3D11Texture2D* texture;
-    d3d11Device->CreateTexture2D(&textureDesc, &textureSubresourceData, &texture);
+    // 3. Create the texture array resource with initial data
+    ID3D11Texture2D* pTextureArray = nullptr;
+    HRESULT hr = d3d11Device->CreateTexture2D(&textureDesc, initialData.data(), &pTextureArray);
+    if (FAILED(hr))
+    {
+        // Handle error
+    }
 
     ID3D11ShaderResourceView* textureView;
-    d3d11Device->CreateShaderResourceView(texture, nullptr, &textureView);
-
-    free(testTextureBytes);
+    d3d11Device->CreateShaderResourceView(pTextureArray, nullptr, &textureView);
 
     // Create Constant Buffer
     struct Constants
