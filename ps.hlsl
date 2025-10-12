@@ -427,9 +427,11 @@ float4 ps_main(VS_Output input) : SV_Target
     for (int i = 0; i < nAlbums; i++)
     {
         float2 center = float2(panelx - PLAYER_WIDTH / 2 + 40 * SCALE, 70 * SCALE * (i + 1));
-        float2 thumbpx = (px - (center - 30)) / 60;
+        #define thumbsize 34
+        #define expthumbsize (thumbsize + 2)
+        float2 thumbpx = (px - (center - expthumbsize)) / (2 * expthumbsize);
         float thumbsdf =
-            sdCircle(px - center, 30);
+            sdCircle(px - center, thumbsize);
         thumbsdf = clamp(thumbsdf, 0.0, 1.0);
         c1 = lerp(c1, mytexture.Sample(mysampler, float3(thumbpx, i)), 1.0 - thumbsdf);
     }
