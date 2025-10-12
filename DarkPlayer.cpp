@@ -622,7 +622,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Text format
     IDWriteTextFormat* textFormat = nullptr;
-    IDWriteTextFormat* textFormat2 = nullptr;
     pDWriteFactory->CreateTextFormat(
         L"Bahnschrift", // Font family name
         NULL,
@@ -634,6 +633,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &textFormat
     );
     textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+    IDWriteTextFormat* textFormat2 = nullptr;
     pDWriteFactory->CreateTextFormat(
         L"Bahnschrift", // Font family name
         NULL,
@@ -645,6 +646,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &textFormat2
     );
     textFormat2->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+    IDWriteTextFormat* textFormat3 = nullptr;
+    pDWriteFactory->CreateTextFormat(
+        L"Bahnschrift", // Font family name
+        NULL,
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        14.0f,
+        L"en-us", // Locale
+        &textFormat3
+    );
+    textFormat3->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
     D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
 
@@ -726,25 +740,48 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
         // Draw the text
-        const wchar_t* text = L"Low Life";
-        d2dRenderTarget->DrawText(
-            text,
-            wcslen(text),
-            textFormat,
-            D2D1::RectF(0, 288*SCALE, PLAYER_WIDTH, 308*SCALE),
-            textBrush
-        );
+        {
+            const wchar_t* text = L"Low Life";
+            d2dRenderTarget->DrawText(
+                text,
+                wcslen(text),
+                textFormat,
+                D2D1::RectF(0, 288 * SCALE, PLAYER_WIDTH, 308 * SCALE),
+                textBrush
+            );
+        }
 
-        const wchar_t* text2 = L"Future ft. The Weeknd";
-        d2dRenderTarget->DrawText(
-            text2,
-            wcslen(text2),
-            textFormat2,
-            D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
-            textBrush2
-        );
+        {
+            const wchar_t* text = L"Future ft. The Weeknd";
+            d2dRenderTarget->DrawText(
+                text,
+                wcslen(text),
+                textFormat2,
+                D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
+                textBrush2
+            );
+        }
 
         d2dRenderTarget->PopAxisAlignedClip();
+
+        for (int i = 0; i < nAlbums; i++)
+        {
+            d2dRenderTarget->DrawText(
+                album_keys[i].c_str(),
+                wcslen(album_keys[i].c_str()),
+                textFormat3,
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i+1) - 15 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
+                textBrush
+            );
+
+            d2dRenderTarget->DrawText(
+                albums[album_keys[i]].artist.c_str(),
+                wcslen(albums[album_keys[i]].artist.c_str()),
+                textFormat3,
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i + 1) - 0 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
+                textBrush2
+            );
+        }
 
         d2dRenderTarget->EndDraw();
 
