@@ -128,10 +128,8 @@
   <ItemGroup>
     <ClInclude Include="DarkPlayer.h" />
     <ClInclude Include="playerdefs.h" />
-    <ClInclude Include="ps.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="vs.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="albums.cpp" />
