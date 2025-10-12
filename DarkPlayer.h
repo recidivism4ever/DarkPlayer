@@ -38,3 +38,4 @@ BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path);
 
 #include "playerdefs.h"
 
+#include "albums.h"

@@ -311,6 +311,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     CoInitialize(0);
 
     init_image_loader();
+
+    iterateAlbums();
     
     // Open a window
     HWND hwnd;
