@@ -17,7 +17,7 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
     hr = pThumbnailCache->GetThumbnail(
         psi,
         256, // Desired thumbnail size (256x256 pixels)
-        WTS_EXTRACT, // Flag to force extraction if not in cache. WTS_FORCEEXTRACTION to always extract.
+        WTS_EXTRACT | WTS_SCALEUP | WTS_CROPTOSQUARE, // Flag to force extraction if not in cache. WTS_FORCEEXTRACTION to always extract.
         &pSharedBitmap,
         nullptr,
         nullptr);

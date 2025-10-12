@@ -247,10 +247,10 @@ float map(float3 p)
     for (int i = 0; i < nAlbums; i++)
     {
         a = opSmoothUnion(
-        a,
-        sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, 70 * SCALE * (i+1), 0), 30, 27, 55, 5),
-        8.0
-    );
+            a,
+            sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, 70 * SCALE * (i+1), 0), 30, 27, 55, 5),
+            8.0
+        );
     }
     return a;
 }
@@ -423,7 +423,17 @@ float4 ps_main(VS_Output input) : SV_Target
     skipsdf = clamp(skipsdf, 0.0, 1.0);
     float boxsdf = sdBox(px - float2(panelx, PLAYER_HEIGHT / 2), float2(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT / 2 + 8));
     boxsdf = clamp(boxsdf, 0.0, 1.0);
-    float4 c1 = brightness * grey;
+    float4 c1 = grey;
+    for (int i = 0; i < nAlbums; i++)
+    {
+        float2 center = float2(panelx - PLAYER_WIDTH / 2 + 40 * SCALE, 70 * SCALE * (i + 1));
+        float2 thumbpx = (px - (center - 30)) / 60;
+        float thumbsdf =
+            sdCircle(px - center, 30);
+        thumbsdf = clamp(thumbsdf, 0.0, 1.0);
+        c1 = lerp(c1, mytexture.Sample(mysampler, float3(thumbpx, i)), 1.0 - thumbsdf);
+    }
+    c1 *= brightness;
     float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
     finalcolor = lerp(finalcolor, c1, 1.0 - boxsdf);
     return finalcolor;
