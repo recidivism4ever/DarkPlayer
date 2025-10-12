@@ -196,6 +196,11 @@ float map(float3 p)
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), pbradius, pbradius-2, 5, 5),
         8.0
     );
+    a = opSmoothSubtraction(
+        sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius*2), pbradius * 2),
+        a,
+        1.0
+    );
     a = opSmoothUnion(
         a,
         sdRoundedTruncatedCone(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), skipradius, skipradius - 2, 5, 5),
