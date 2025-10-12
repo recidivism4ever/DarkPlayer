@@ -33,6 +33,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 #include <assert.h>
 
@@ -43,4 +44,20 @@ BYTE* load_image(bool flip_vertically, UINT* width, UINT* height, LPCWSTR path);
 
 #include "playerdefs.h"
 
-#include "albums.h"
+struct Song {
+    std::wstring path;
+    std::wstring title;
+    UINT number;
+
+    bool operator<(const Song& other) const {
+        return number < other.number;
+    }
+};
+
+struct Album {
+    std::vector<Song> songs;
+    std::wstring artist;
+    HBITMAP bitmap;
+};
+
+std::map<std::wstring, Album> iterateAlbums();

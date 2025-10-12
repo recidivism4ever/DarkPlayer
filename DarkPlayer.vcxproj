@@ -126,7 +126,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="albums.h" />
     <ClInclude Include="DarkPlayer.h" />
     <ClInclude Include="playerdefs.h" />
     <ClInclude Include="ps.h" />

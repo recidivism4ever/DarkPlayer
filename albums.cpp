@@ -1,14 +1,4 @@
-#include <windows.h>
-#include <shlobj.h>
-#include <propvarutil.h>
-#include <propsys.h>
-#include <Propkey.h>
-#include <iostream>
-#include <string>
-#include <map>
-#include <vector>
-
-#pragma comment(lib, "Propsys.lib")
+#include "DarkPlayer.h"
 
 // Function to get the album art thumbnail
 bool getAlbumArtThumbnail(IShellItem* psi) {
@@ -56,9 +46,80 @@ std::wstring getAlbumTitle(IShellItem* psi) {
     return albumTitle;
 }
 
+std::wstring getArtist(IShellItem* psi) {
+    IPropertyStore* pps = nullptr;
+    HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
+    if (FAILED(hr)) {
+        return L""; // Return empty on failure
+    }
+
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+
+    hr = pps->GetValue(PKEY_Music_Artist, &pv);
+    std::wstring artist;
+    if (SUCCEEDED(hr)) {
+        PWSTR pwszArtist = nullptr;
+        PropVariantToStringAlloc(pv, &pwszArtist);
+        if (pwszArtist) {
+            artist = pwszArtist;
+            CoTaskMemFree(pwszArtist);
+        }
+        PropVariantClear(&pv);
+    }
+    pps->Release();
+    return artist;
+}
+
+std::wstring getSongTitle(IShellItem* psi) {
+    IPropertyStore* pps = nullptr;
+    HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
+    if (FAILED(hr)) {
+        return L"";
+    }
+
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+
+    hr = pps->GetValue(PKEY_Title, &pv);
+    std::wstring songTitle;
+    if (SUCCEEDED(hr)) {
+        PWSTR pwszSongTitle = nullptr;
+        PropVariantToStringAlloc(pv, &pwszSongTitle);
+        if (pwszSongTitle) {
+            songTitle = pwszSongTitle;
+            CoTaskMemFree(pwszSongTitle);
+        }
+        PropVariantClear(&pv);
+    }
+    pps->Release();
+    return songTitle;
+}
+
+UINT32 getTrackNumber(IShellItem* psi) {
+    IPropertyStore* pps = nullptr;
+    HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
+    if (FAILED(hr)) {
+        return 0;
+    }
+
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+
+    hr = pps->GetValue(PKEY_Music_TrackNumber, &pv);
+    UINT32 trackNumber = 0;
+    if (SUCCEEDED(hr)) {
+        // Use PropVariantToUInt32 to safely convert the PROPVARIANT
+        PropVariantToUInt32(pv, &trackNumber);
+        PropVariantClear(&pv);
+    }
+    pps->Release();
+    return trackNumber;
+}
+
 // Recursive function to find music items and their albums
 void findMusicInFolder(IShellItem* psiFolder,
-    std::map<std::wstring, std::vector<std::wstring>>& albums) {
+    std::map<std::wstring, Album>& albums) {
     IEnumShellItems* pesi = nullptr;
     // Get an enumerator for the items in this folder
     HRESULT hr = psiFolder->BindToHandler(NULL, BHID_EnumItems, IID_PPV_ARGS(&pesi));
@@ -82,7 +143,13 @@ void findMusicInFolder(IShellItem* psiFolder,
                 PWSTR pwszPath = nullptr;
                 psi->GetDisplayName(SIGDN_FILESYSPATH, &pwszPath);
                 if (pwszPath) {
-                    albums[albumTitle].push_back(pwszPath);
+                    Song s = {
+                        pwszPath, getSongTitle(psi), getTrackNumber(psi)
+                    };
+                    if (albums[albumTitle].artist.empty()) {
+                        albums[albumTitle].artist = getArtist(psi);
+                    }
+                    albums[albumTitle].songs.push_back(s);
                     CoTaskMemFree(pwszPath);
                 }
             }
@@ -92,19 +159,21 @@ void findMusicInFolder(IShellItem* psiFolder,
     pesi->Release();
 }
 
-void iterateAlbums() {
+std::map<std::wstring, Album> iterateAlbums(){
+
+    std::map<std::wstring, Album> albums;
 
     IShellItem* psiMusicFolder = nullptr;
     HRESULT hr = SHGetKnownFolderItem(FOLDERID_Music, KF_FLAG_DEFAULT, NULL, IID_PPV_ARGS(&psiMusicFolder));
 
     if (SUCCEEDED(hr)) {
-        std::map<std::wstring, std::vector<std::wstring>> albums;
         findMusicInFolder(psiMusicFolder, albums);
 
-        for (const auto& pair : albums) {
-            std::wcout << L"Album: " << pair.first << std::endl;
-            for (const auto& track : pair.second) {
-                std::wcout << L"\t- " << track << std::endl;
+        for (auto& pair : albums) {
+            std::wcout << L"Album: " << pair.first << " - " << pair.second.artist << std::endl;
+            std::sort(pair.second.songs.begin(), pair.second.songs.end());
+            for (auto& track : pair.second.songs) {
+                std::wcout << L"\t- " << track.number << ": " << track.title << std::endl;
             }
             std::wcout << std::endl;
         }
@@ -114,4 +183,5 @@ void iterateAlbums() {
         std::wcerr << L"Failed to get music folder." << std::endl;
     }
 
+    return albums;
 }
