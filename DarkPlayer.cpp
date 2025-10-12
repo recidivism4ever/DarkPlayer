@@ -771,7 +771,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 album_keys[i].c_str(),
                 wcslen(album_keys[i].c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i+1) - 15 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i+1) - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
                 textBrush
             );
 
@@ -779,7 +779,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 albums[album_keys[i]].artist.c_str(),
                 wcslen(albums[album_keys[i]].artist.c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i + 1) - 0 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i + 1) + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
                 textBrush2
             );
         }
