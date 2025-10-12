@@ -5,7 +5,9 @@ cbuffer constants : register(b0)
 {
     float progress;
     float panelx;
+    float panely;
     int nAlbums;
+    int albumLengths[MAX_ALBUMS];
 };
 
 Texture2DArray mytexture : register(t0);
@@ -244,13 +246,24 @@ float map(float3 p)
         sdRoundedTruncatedCone(p - float3(panelx + PLAYER_WIDTH/2 - 35 * SCALE, 35 * SCALE, 0), 15, 12, 55, 5),
         8.0
     );
+    float albumY = panely;
     for (int i = 0; i < nAlbums; i++)
     {
         a = opSmoothUnion(
             a,
-            sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, 70 * SCALE * (i+1), 0), 30, 27, 55, 5),
+            sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, albumY, 0), 30, 27, 55, 5),
             8.0
         );
+        
+        for (int j = 0; j < albumLengths[i]; j++)
+        {
+            a = opSmoothSubtraction(
+                sdHorizontalCapsule(p - float3(panelx - PLAYER_WIDTH / 2 + 20*SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT, 50), PLAYER_WIDTH - 80 * SCALE, 1),
+                a,
+                1.0
+            );
+        }
+        albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
     }
     return a;
 }
@@ -424,9 +437,10 @@ float4 ps_main(VS_Output input) : SV_Target
     float boxsdf = sdBox(px - float2(panelx, PLAYER_HEIGHT / 2), float2(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT / 2 + 8));
     boxsdf = clamp(boxsdf, 0.0, 1.0);
     float4 c1 = grey;
+    float albumY = panely;
     for (int i = 0; i < nAlbums; i++)
     {
-        float2 center = float2(panelx - PLAYER_WIDTH / 2 + 40 * SCALE, 70 * SCALE * (i + 1));
+        float2 center = float2(panelx - PLAYER_WIDTH / 2 + 40 * SCALE, albumY);
         #define thumbsize 34
         #define expthumbsize (thumbsize + 2)
         float2 thumbpx = (px - (center - expthumbsize)) / (2 * expthumbsize);
@@ -434,6 +448,7 @@ float4 ps_main(VS_Output input) : SV_Target
             sdCircle(px - center, thumbsize);
         thumbsdf = clamp(thumbsdf, 0.0, 1.0);
         c1 = lerp(c1, mytexture.Sample(mysampler, float3(thumbpx, i)), 1.0 - thumbsdf);
+        albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
     }
     c1 *= brightness;
     float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;

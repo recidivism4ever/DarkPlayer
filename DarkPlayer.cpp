@@ -19,12 +19,11 @@ int actiontype;
 #define ACTION_LUP 2
 
 float progress = .75f;
-#define PANEL_LEFT_STOP (-PLAYER_WIDTH/2 - 32)
-#define PANEL_RIGHT_STOP (PLAYER_WIDTH/2)
 #define SWINGOUT_TICKS 10
 float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;
 float panelx = PANEL_LEFT_STOP;
+float panely = 70.0f;
 int panelticks = 0;
 int nAlbums;
 
@@ -572,7 +571,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
         float progress;
         float panelx;
+        float panely;
         int nAlbums;
+        int albumLengths[MAX_ALBUMS];
     };
 
     ID3D11Buffer* constantBuffer;
@@ -590,7 +591,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     ID2D1Factory* pD2DFactory = NULL;
     IDWriteFactory* pDWriteFactory = NULL;
-    IDWriteTextFormat* pTextFormat = NULL;
     ID2D1RenderTarget* d2dRenderTarget = NULL;
 
     D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pD2DFactory);
@@ -660,6 +660,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &textFormat3
     );
     textFormat3->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+    textFormat3->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+    IDWriteInlineObject* pTrimmingSign = nullptr;
+    pDWriteFactory->CreateEllipsisTrimmingSign(
+        textFormat3, // Use the text format you intend to trim
+        &pTrimmingSign
+    );
+    DWRITE_TRIMMING trimmingOptions = {
+        DWRITE_TRIMMING_GRANULARITY_CHARACTER, // Granularity
+        0, // Delimiter (not needed for simple ellipsis)
+        0  // Delimiter Count
+    };
+    textFormat3->SetTrimming(
+        &trimmingOptions,
+        pTrimmingSign
+    );
 
     D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
 
@@ -705,7 +720,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         Constants* constants = (Constants*)(mappedSubresource.pData);
         constants->progress = progress;
         constants->panelx = panelx;
+        constants->panely = panely;
         constants->nAlbums = nAlbums;
+        for (int i = 0; i < album_keys.size(); i++) {
+            constants->albumLengths[i] = albums[album_keys[i]].songs.size();
+        }
         d3d11DeviceContext->Unmap(constantBuffer, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
@@ -765,13 +784,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d2dRenderTarget->PopAxisAlignedClip();
 
+        float albumY = panely;
         for (int i = 0; i < nAlbums; i++)
         {
             d2dRenderTarget->DrawText(
                 album_keys[i].c_str(),
                 wcslen(album_keys[i].c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i+1) - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
                 textBrush
             );
 
@@ -779,9 +799,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 albums[album_keys[i]].artist.c_str(),
                 wcslen(albums[album_keys[i]].artist.c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, 70 * SCALE * (i + 1) + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
+                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, albumY + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
                 textBrush2
             );
+
+            for (int j = 0; j < albums[album_keys[i]].songs.size(); j++) {
+                d2dRenderTarget->DrawText(
+                    albums[album_keys[i]].songs[j].title.c_str(),
+                    wcslen(albums[album_keys[i]].songs[j].title.c_str()),
+                    textFormat3,
+                    D2D1::RectF(panelx - PLAYER_WIDTH / 2 + 30 * SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT + 13, panelx + PLAYER_WIDTH/2 - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    textBrush
+                );
+            }
+            albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albums[album_keys[i]].songs.size() + 1);
         }
 
         d2dRenderTarget->EndDraw();
