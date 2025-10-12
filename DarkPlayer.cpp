@@ -26,7 +26,7 @@ float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;
 float panelx = PANEL_LEFT_STOP;
 int panelticks = 0;
-int nAlbums = 5;
+int nAlbums;
 
 enum State {
     DEFAULT,
@@ -318,6 +318,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     for (const auto& pair : albums) {
         album_keys.push_back(pair.first);
     }
+    nAlbums = album_keys.size();
     
     // Open a window
     HWND hwnd;
@@ -543,7 +544,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     textureDesc.Height = THUMBNAIL_SIZE;
     textureDesc.MipLevels = 1;
     textureDesc.ArraySize = nAlbums;
-    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
     textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
