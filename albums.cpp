@@ -1,23 +1,28 @@
 #include "DarkPlayer.h"
+#include <wrl/client.h>
+#include <thumbcache.h>
 
-// Function to get the album art thumbnail
-bool getAlbumArtThumbnail(IShellItem* psi) {
-    IShellItemImageFactory* pFactory = nullptr;
-    HRESULT hr = psi->BindToHandler(NULL, BHID_SFUIObject, IID_PPV_ARGS(&pFactory));
+using namespace Microsoft::WRL;
+
+HRESULT getThumbnail(IShellItem* psi, HBITMAP* phBitmap) {
+    ComPtr<IThumbnailCache> pThumbnailCache;
+    HRESULT hr = CoCreateInstance(CLSID_LocalThumbnailCache, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pThumbnailCache));
     if (FAILED(hr)) {
-        return false;
+        return hr;
     }
 
-    HBITMAP hBitmap;
-    // Request a 64x64 thumbnail
-    hr = pFactory->GetImage({ 64, 64 }, SIIGBF_THUMBNAILONLY, &hBitmap);
-    pFactory->Release();
-
-    if (SUCCEEDED(hr) && hBitmap) {
-        //image.Attach(hBitmap);
-        return true;
+    ComPtr<ISharedBitmap> pSharedBitmap;
+    hr = pThumbnailCache->GetThumbnail(
+        psi,
+        256, // Desired thumbnail size (256x256 pixels)
+        WTS_EXTRACT, // Flag to force extraction if not in cache
+        &pSharedBitmap,
+        nullptr,
+        nullptr);
+    if (SUCCEEDED(hr)) {
+        hr = pSharedBitmap->GetSharedBitmap(phBitmap);
     }
-    return false;
+    return hr;
 }
 
 // A helper to get the album title from an IShellItem
@@ -148,6 +153,9 @@ void findMusicInFolder(IShellItem* psiFolder,
                     };
                     if (albums[albumTitle].artist.empty()) {
                         albums[albumTitle].artist = getArtist(psi);
+                    }
+                    if (albums[albumTitle].bitmap == NULL) {
+                        getThumbnail(psi, &(albums[albumTitle].bitmap));
                     }
                     albums[albumTitle].songs.push_back(s);
                     CoTaskMemFree(pwszPath);
