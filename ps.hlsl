@@ -6,6 +6,7 @@ cbuffer constants : register(b0)
     float progress;
     float panelx;
     float panely;
+    int pressedButton;
     int nAlbums;
     int albumLengths[MAX_ALBUMS];
 };
@@ -265,32 +266,43 @@ float map(float3 p)
         }
         albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
     }
+    switch (pressedButton)
     {
-        a = opSmoothSubtraction(
-            sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius * 2), pbradius * 2),
-            a,
-            1.0
-        );
-        a = opSmoothSubtraction(
-            sdSphere(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
-            a,
-            1.0
-        );
-        a = opSmoothSubtraction(
-            sdSphere(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
-            a,
-            1.0
-        );
-        a = opSmoothSubtraction(
-            sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
-            a,
-            1.0
-        );
-        a = opSmoothSubtraction(
-            sdSphere(p - float3(35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
-            a,
-            1.0
-        );
+        case 0:
+            a = opSmoothSubtraction(
+                sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius * 2), pbradius * 2),
+                a,
+                1.0
+            );
+            break;
+        case 1:
+            a = opSmoothSubtraction(
+                sdSphere(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
+                a,
+                1.0
+            );
+            break;
+        case 2:
+            a = opSmoothSubtraction(
+                sdSphere(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
+                a,
+                1.0
+            );
+            break;
+        case 3:
+            a = opSmoothSubtraction(
+                sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+                a,
+                1.0
+            );
+            break;
+        case 4:
+            a = opSmoothSubtraction(
+                sdSphere(p - float3(35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+                a,
+                1.0
+            );
+            break;
     }
     return a;
 }

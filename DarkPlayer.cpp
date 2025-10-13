@@ -2,6 +2,7 @@
 
 #include "vs.h"
 #include "ps.h"
+#include "ps2.h"
 
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
@@ -479,6 +480,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         HRESULT hResult = d3d11Device->CreatePixelShader(g_ps_main, sizeof(g_ps_main), nullptr, &pixelShader);
         assert(SUCCEEDED(hResult));
     }
+    ID3D11PixelShader* pixelShader2;
+    {
+        HRESULT hResult = d3d11Device->CreatePixelShader(g_ps2_main, sizeof(g_ps2_main), nullptr, &pixelShader2);
+        assert(SUCCEEDED(hResult));
+    }
 
     // Create Input Layout
     ID3D11InputLayout* inputLayout;
@@ -533,7 +539,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     samplerDesc.BorderColor[2] = 1.0f;
     samplerDesc.BorderColor[3] = 1.0f;
     samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
     ID3D11SamplerState* samplerState;
     d3d11Device->CreateSamplerState(&samplerDesc, &samplerState);
 
@@ -547,24 +552,40 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
     textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
     std::vector<D3D11_SUBRESOURCE_DATA> initialData(nAlbums);
     for (UINT i = 0; i < nAlbums; ++i)
     {
         initialData[i].pSysMem = albums[album_keys[i]].thumbnail;
         initialData[i].SysMemPitch = textureDesc.Width * 4; // 4 bytes per pixel for R8G8B8A8
     }
-
     // 3. Create the texture array resource with initial data
     ID3D11Texture2D* pTextureArray = nullptr;
-    HRESULT hr = d3d11Device->CreateTexture2D(&textureDesc, initialData.data(), &pTextureArray);
-    if (FAILED(hr))
-    {
-        // Handle error
-    }
-
+    d3d11Device->CreateTexture2D(&textureDesc, initialData.data(), &pTextureArray);
     ID3D11ShaderResourceView* textureView;
     d3d11Device->CreateShaderResourceView(pTextureArray, nullptr, &textureView);
+
+    D3D11_TEXTURE2D_DESC descStagingTexture;
+    descStagingTexture = textureDesc;
+    descStagingTexture.BindFlags = 0; // Staging textures cannot be bound to the pipeline
+    descStagingTexture.Usage = D3D11_USAGE_DEFAULT;
+    descStagingTexture.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    descStagingTexture.Width = 360;
+    descStagingTexture.Height = 778;
+    descStagingTexture.ArraySize = NBUTTONS;
+    ID3D11Texture2D* basemaps = nullptr;
+    d3d11Device->CreateTexture2D(&descStagingTexture, NULL, &basemaps);
+    ID3D11ShaderResourceView* baseview;
+    d3d11Device->CreateShaderResourceView(basemaps, nullptr, &baseview);
+    ID3D11RenderTargetView* pRTVs[NBUTTONS];
+    for (int i = 0; i < NBUTTONS; ++i) {
+        D3D11_RENDER_TARGET_VIEW_DESC rtvdesc;
+        rtvdesc.Format = descStagingTexture.Format;
+        rtvdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+        rtvdesc.Texture2DArray.MipSlice = 0;
+        rtvdesc.Texture2DArray.ArraySize = 1;
+        rtvdesc.Texture2DArray.FirstArraySlice = i;
+        d3d11Device->CreateRenderTargetView(basemaps, &rtvdesc, &pRTVs[i]);
+    }
 
     // Create Constant Buffer
     struct Constants
@@ -572,8 +593,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float progress;
         float panelx;
         float panely;
+        int pressedButton;
         int nAlbums;
         int albumLengths[MAX_ALBUMS];
+    };
+    struct Constants2
+    {
+        float progress;
+        float panelx;
+        int pressedButton;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -586,6 +614,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
         HRESULT hResult = d3d11Device->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer);
+        assert(SUCCEEDED(hResult));
+    }
+    ID3D11Buffer* constantBuffer2;
+    {
+        D3D11_BUFFER_DESC constantBufferDesc = {};
+        // ByteWidth must be a multiple of 16, per the docs
+        constantBufferDesc.ByteWidth = sizeof(Constants) + 0xf & 0xfffffff0;
+        constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+        constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+        HRESULT hResult = d3d11Device->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer2);
         assert(SUCCEEDED(hResult));
     }
 
@@ -695,6 +735,46 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     QueryPerformanceCounter(&t0);
     accum = 0.0;
 
+    bool firstRun = true;
+
+    for (int bi = 0; bi < NBUTTONS; bi++) {
+        D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+        d3d11DeviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
+        Constants* constants = (Constants*)(mappedSubresource.pData);
+        constants->progress = progress;
+        constants->panelx = panelx;
+        constants->panely = panely;
+        constants->pressedButton = bi;
+        constants->nAlbums = nAlbums;
+        for (int i = 0; i < album_keys.size(); i++) {
+            constants->albumLengths[i] = albums[album_keys[i]].songs.size();
+        }
+        d3d11DeviceContext->Unmap(constantBuffer, 0);
+
+        d3d11DeviceContext->OMSetRenderTargets(1, &pRTVs[bi], nullptr);
+
+        const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        d3d11DeviceContext->ClearRenderTargetView(pRTVs[bi], clearColor);
+
+        D3D11_VIEWPORT viewport = { 0.0f, 0.0f, (FLOAT)(descStagingTexture.Width), (FLOAT)(descStagingTexture.Height), 0.0f, 1.0f };
+        d3d11DeviceContext->RSSetViewports(1, &viewport);
+
+        d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        d3d11DeviceContext->IASetInputLayout(inputLayout);
+
+        d3d11DeviceContext->VSSetShader(vertexShader, nullptr, 0);
+        d3d11DeviceContext->PSSetShader(pixelShader, nullptr, 0);
+
+        d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer);
+
+        d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
+        d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
+
+        d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+
+        d3d11DeviceContext->Draw(numVerts, 0);
+    }
+
     // Main Loop
     bool isRunning = true;
     while (isRunning)
@@ -716,16 +796,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         tickloop();
 
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
-        d3d11DeviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
-        Constants* constants = (Constants*)(mappedSubresource.pData);
+        d3d11DeviceContext->Map(constantBuffer2, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
+        Constants2* constants = (Constants2*)(mappedSubresource.pData);
         constants->progress = progress;
         constants->panelx = panelx;
-        constants->panely = panely;
-        constants->nAlbums = nAlbums;
-        for (int i = 0; i < album_keys.size(); i++) {
-            constants->albumLengths[i] = albums[album_keys[i]].songs.size();
-        }
-        d3d11DeviceContext->Unmap(constantBuffer, 0);
+        constants->pressedButton = 0;
+        d3d11DeviceContext->Unmap(constantBuffer2, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
         d3d11DeviceContext->ClearRenderTargetView(d3d11FrameBufferView, backgroundColor);
@@ -741,11 +817,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         d3d11DeviceContext->IASetInputLayout(inputLayout);
 
         d3d11DeviceContext->VSSetShader(vertexShader, nullptr, 0);
-        d3d11DeviceContext->PSSetShader(pixelShader, nullptr, 0);
+        d3d11DeviceContext->PSSetShader(pixelShader2, nullptr, 0);
 
-        d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer);
+        d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer2);
 
-        d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
+        d3d11DeviceContext->PSSetShaderResources(0, 1, &baseview);
         d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
 
         d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
