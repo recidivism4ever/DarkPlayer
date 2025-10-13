@@ -196,11 +196,6 @@ float map(float3 p)
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), pbradius, pbradius-2, 5, 5),
         8.0
     );
-    a = opSmoothSubtraction(
-        sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius*2), pbradius * 2),
-        a,
-        1.0
-    );
     a = opSmoothUnion(
         a,
         sdRoundedTruncatedCone(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 0), skipradius, skipradius - 2, 5, 5),
@@ -269,6 +264,33 @@ float map(float3 p)
             );
         }
         albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
+    }
+    {
+        a = opSmoothSubtraction(
+            sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius * 2), pbradius * 2),
+            a,
+            1.0
+        );
+        a = opSmoothSubtraction(
+            sdSphere(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
+            a,
+            1.0
+        );
+        a = opSmoothSubtraction(
+            sdSphere(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
+            a,
+            1.0
+        );
+        a = opSmoothSubtraction(
+            sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+            a,
+            1.0
+        );
+        a = opSmoothSubtraction(
+            sdSphere(p - float3(35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+            a,
+            1.0
+        );
     }
     return a;
 }
@@ -431,7 +453,7 @@ float4 ps_main(VS_Output input) : SV_Target
     );
     sksymbsdf = opUnion(sksymbsdf, backsdf);
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
-    float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 0)), grey, imgsdf);
+    float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
     c = lerp(c, lerp(orange * 1.7, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
