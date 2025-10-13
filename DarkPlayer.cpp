@@ -12,6 +12,57 @@ float remainingTick = 0.0f;
 LARGE_INTEGER freq, t0, t1;
 double countsPerTick, accum;
 
+DWORD useAccent;
+DWORD accentColor;
+bool isFocused = false;
+void getAccent(void) {
+
+    HKEY key = 0;
+    LSTATUS status = RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\DWM", 0, KEY_READ, &key);
+    assert(status == ERROR_SUCCESS);
+
+    DWORD size = sizeof(DWORD);
+
+    DWORD frame_color = 0;
+    status = RegGetValueW(key, 0, L"ColorizationColor", RRF_RT_REG_DWORD, 0, &frame_color, &size);
+
+    DWORD balance = 0;
+    status = RegGetValueW(key, 0, L"ColorizationColorBalance", RRF_RT_REG_DWORD, 0, &balance, &size);
+
+    status = RegGetValueW(key, 0, L"ColorPrevalence", RRF_RT_REG_DWORD, 0, &useAccent, &size);
+    assert(status == ERROR_SUCCESS);
+
+    status = RegCloseKey(key);
+    assert(status == ERROR_SUCCESS);
+
+    if (useAccent) {
+
+        DWORD frame_blend_color = 0x00d9d9d9;
+
+        float factor_a = ((float)balance) / 100.0f;
+        float factor_b = ((float)(100 - balance)) / 100.0f;
+
+        float a_r = (float)((frame_color >> 16) & 0xff);
+        float a_g = (float)((frame_color >> 8) & 0xff);
+        float a_b = (float)(frame_color & 0xff);
+
+        float b_r = (float)((frame_blend_color >> 16) & 0xff);
+        float b_g = (float)((frame_blend_color >> 8) & 0xff);
+        float b_b = (float)(frame_blend_color & 0xff);
+
+        int r = (int)roundf(a_r * factor_a + b_r * factor_b);
+        int g = (int)roundf(a_g * factor_a + b_g * factor_b);
+        int b = (int)roundf(a_b * factor_a + b_b * factor_b);
+
+        accentColor = (b << 16) | (g << 8) | (r);
+
+    }
+    else {
+
+        accentColor = 0xb2323232;
+    }
+}
+
 int prevmousex, prevmousey, mousex, mousey;
 int btnid, hoveredid, ldownid = -1;
 int actiontype;
@@ -262,6 +313,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         }
         return DefWindowProcW(hwnd, msg, wparam, lparam);
     }
+    case WM_SETFOCUS: {
+        isFocused = true;
+    } break;
+
+    case WM_KILLFOCUS: {
+        isFocused = false;
+    } break;
+    case WM_DWMCOLORIZATIONCOLORCHANGED: {
+        getAccent();
+        break;
+    }
     case WM_KEYDOWN:
     {
         if (wparam == VK_ESCAPE)
@@ -312,6 +374,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     CoInitialize(0);
 
     init_image_loader();
+
+    getAccent();
 
     std::map<std::wstring, Album> albums = iterateAlbums();
     std::vector<std::wstring> album_keys;
@@ -599,6 +663,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     };
     struct Constants2
     {
+        float accent[4];
         float progress;
         float panelx;
         int pressedButton;
@@ -798,6 +863,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
         d3d11DeviceContext->Map(constantBuffer2, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
         Constants2* constants = (Constants2*)(mappedSubresource.pData);
+        constants->accent[3] = useAccent && isFocused;
+        constants->accent[2] = ((accentColor>>16) & 0xff) / 255.0f;
+        constants->accent[1] = ((accentColor>>8) & 0xff) / 255.0f;
+        constants->accent[0] = (accentColor & 0xff) / 255.0f;
         constants->progress = progress;
         constants->panelx = panelx;
         constants->pressedButton = 0;

@@ -3,6 +3,7 @@
 
 cbuffer constants : register(b0)
 {
+    float4 accent;
     float progress;
     float panelx;
     int pressedButton;
@@ -238,5 +239,7 @@ float4 ps2_main(VS_Output input) : SV_Target
     float2 px = input.uv;
     px.x *= (float) PLAYER_WIDTH;
     px.y *= (float) PLAYER_HEIGHT;
+    if (accent.a > 0.0 && px.y < 1.0)
+        return accent;
     return mytexture.Sample(mysampler, float3(input.uv, pressedButton));
 }
