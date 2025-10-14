@@ -277,7 +277,7 @@ float4 ps2_main(VS_Output input) : SV_Target
     float4 s = basemaps.Sample(mysampler, float3(input.uv, pressedButton));
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
-    float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
+    float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
     c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - s.a), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - s.g);
     c = lerp(c, paint * 1.5, 1.0 - s.b);

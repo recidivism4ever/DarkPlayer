@@ -4,8 +4,82 @@
 
 using namespace Microsoft::WRL;
 
+HRESULT GetScaledPixelsFromStream(
+    PROPVARIANT& pv,
+    BYTE *buffer
+){
+    ComPtr<IStream> pStream;
+    HRESULT hr = pv.punkVal->QueryInterface(IID_PPV_ARGS(&pStream));
+    if (FAILED(hr)) return hr;
+
+    ComPtr<IWICImagingFactory> pFactory;
+    hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFactory));
+    if (FAILED(hr)) return hr;
+
+    ComPtr<IWICBitmapDecoder> pDecoder;
+    hr = pFactory->CreateDecoderFromStream(pStream.Get(), NULL, WICDecodeMetadataCacheOnLoad, &pDecoder);
+    if (FAILED(hr)) return hr;
+
+    ComPtr<IWICBitmapFrameDecode> pFrame;
+    hr = pDecoder->GetFrame(0, &pFrame);
+    if (FAILED(hr)) return hr;
+
+    // Convert to a common pixel format (e.g., 32bpp RGBA) for D3D
+    ComPtr<IWICFormatConverter> pConverter;
+    hr = pFactory->CreateFormatConverter(&pConverter);
+    if (FAILED(hr)) return hr;
+
+    hr = pConverter->Initialize(
+        pFrame.Get(),
+        GUID_WICPixelFormat32bppPBGRA, // Pixel format compatible with D3D11
+        WICBitmapDitherTypeNone,
+        NULL,
+        0.f,
+        WICBitmapPaletteTypeCustom
+    );
+    if (FAILED(hr)) return hr;
+
+    // Create the scaler
+    ComPtr<IWICBitmapScaler> pScaler;
+    hr = pFactory->CreateBitmapScaler(&pScaler);
+    if (FAILED(hr)) return hr;
+
+    hr = pScaler->Initialize(
+        pConverter.Get(),
+        THUMBNAIL_SIZE,
+        THUMBNAIL_SIZE,
+        WICBitmapInterpolationModeFant // High-quality scaling
+    );
+    if (FAILED(hr)) return hr;
+
+    // Copy the scaled pixels into the buffer
+    hr = pScaler->CopyPixels(NULL, THUMBNAIL_SIZE*4, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4, buffer);
+
+    return hr;
+}
+
 HRESULT getThumbnail(IShellItem* psi, Album *a) {
     if (a->thumbnail == NULL) return NULL;
+
+    IPropertyStore* pps = nullptr;
+    HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
+    if (FAILED(hr)) {
+        return NULL; // Return empty on failure
+    }
+
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+
+    hr = pps->GetValue(PKEY_ThumbnailStream, &pv);
+    if (SUCCEEDED(hr)) {
+        hr = GetScaledPixelsFromStream(pv, a->thumbnail);
+        if (SUCCEEDED(hr)) a->thumbnailFound = true;
+        PropVariantClear(&pv);
+    }
+
+    pps->Release();
+
+    /*
 
     ComPtr<IThumbnailCache> pThumbnailCache;
     HRESULT hr = CoCreateInstance(CLSID_LocalThumbnailCache, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pThumbnailCache));
@@ -42,6 +116,8 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
             a->thumbnailFound = true;
         }
     }
+    */
+
     return hr;
 }
 
