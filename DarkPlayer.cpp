@@ -628,13 +628,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ID3D11ShaderResourceView* textureView;
     d3d11Device->CreateShaderResourceView(pTextureArray, nullptr, &textureView);
 
+    RECT cr;
+    GetClientRect(hwnd, &cr);
+
     D3D11_TEXTURE2D_DESC descStagingTexture;
     descStagingTexture = textureDesc;
     descStagingTexture.BindFlags = 0; // Staging textures cannot be bound to the pipeline
     descStagingTexture.Usage = D3D11_USAGE_DEFAULT;
     descStagingTexture.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-    descStagingTexture.Width = 360;
-    descStagingTexture.Height = 778;
+    descStagingTexture.Width = cr.right - cr.left;
+    descStagingTexture.Height = cr.bottom - cr.top;
     descStagingTexture.ArraySize = NBUTTONS;
     ID3D11Texture2D* basemaps = nullptr;
     d3d11Device->CreateTexture2D(&descStagingTexture, NULL, &basemaps);
