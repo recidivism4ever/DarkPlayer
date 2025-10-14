@@ -241,5 +241,38 @@ float4 ps2_main(VS_Output input) : SV_Target
     px.y *= (float) PLAYER_HEIGHT;
     if (accent.a > 0.0 && px.y < 1.0)
         return accent;
-    return mytexture.Sample(mysampler, float3(input.uv, pressedButton));
+    const float4 grey = float4(
+        0.2,
+        0.2235294117647059,
+        0.24313725490196078,
+        1.0);
+    const float4 orange = float4(
+        0.9333333333333333,
+        0.3333333333333333,
+        0.050980392156862744,
+        1.0
+    );
+    const float4 blue = float4(
+        0.8627450980392157,
+        0.6627450980392157,
+        0.12941176470588237,
+        1.0
+    );
+    const float4 white = float4(
+        1.0,
+        0.9882352941176471,
+        0.984313725490196,
+        1.0
+    );
+    const float4 paint = float4(
+        0.5254901960784314, 
+        0.5333333333333333, 
+        0.5450980392156862, 
+        1.0
+    );
+    float4 s = mytexture.Sample(mysampler, float3(input.uv, pressedButton));
+    float4 c = grey;
+    c = lerp(c, paint, 1.0 - s.g);
+    c = lerp(c, paint * 1.5, 1.0 - s.b);
+    return c * s.r;
 }

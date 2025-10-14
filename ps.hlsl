@@ -268,35 +268,35 @@ float map(float3 p)
     }
     switch (pressedButton)
     {
-        case 0:
+        case 1:
             a = opSmoothSubtraction(
                 sdSphere(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 5 + pbradius * 2), pbradius * 2),
                 a,
                 1.0
             );
             break;
-        case 1:
+        case 2:
             a = opSmoothSubtraction(
                 sdSphere(p - float3(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
                 a,
                 1.0
             );
             break;
-        case 2:
+        case 3:
             a = opSmoothSubtraction(
                 sdSphere(p - float3(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 5 + skipradius * 2), skipradius * 2),
                 a,
                 1.0
             );
             break;
-        case 3:
+        case 4:
             a = opSmoothSubtraction(
                 sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
                 a,
                 1.0
             );
             break;
-        case 4:
+        case 5:
             a = opSmoothSubtraction(
                 sdSphere(p - float3(35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
                 a,
@@ -357,9 +357,9 @@ float4 ps_main(VS_Output input) : SV_Target
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
     float3 norm = raymarchvertical(px);
-    float brightness = max(dot(norm, -lightdir), 0.0) * 
-        lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
-        random(input.uv) * 0.025;
+    float brightness = max(dot(norm, -lightdir), 0.0); // *
+        //lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
+        //random(input.uv) * 0.025;
     const float4 grey = float4(
         0.2,
         0.2235294117647059,
@@ -492,5 +492,5 @@ float4 ps_main(VS_Output input) : SV_Target
     c1 *= brightness;
     float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
     finalcolor = lerp(finalcolor, c1, 1.0 - boxsdf);
-    return finalcolor;
+    return float4(brightness, xsdf, sksymbsdf, 1.0);
 }

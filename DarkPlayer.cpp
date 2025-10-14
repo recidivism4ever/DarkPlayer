@@ -163,13 +163,13 @@ void doButtons(LPARAM lparam, int action) {
         if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
             printf("skip forward\n");
         }
-        if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
-            printf("panel out\n");
-            state = PANEL_SWING_OUT;
-        }
         if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
             printf("close\n");
             PostQuitMessage(0);
+        }
+        if (button(35 * SCALE, 35 * SCALE, 15 + 6)) {
+            printf("panel out\n");
+            state = PANEL_SWING_OUT;
         }
     }
     else if (state == PANEL) {
@@ -869,7 +869,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constants->accent[0] = (accentColor & 0xff) / 255.0f;
         constants->progress = progress;
         constants->panelx = panelx;
-        constants->pressedButton = 0;
+        constants->pressedButton = ldownid + 1;
         d3d11DeviceContext->Unmap(constantBuffer2, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
