@@ -278,16 +278,11 @@ float4 ps2_main(VS_Output input) : SV_Target
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
     float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
-    c = lerp(c, orange * 1.7, 1.0 - playbtnsdf);
+    c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - s.a), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - s.g);
     c = lerp(c, paint * 1.5, 1.0 - s.b);
-    float sksdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
-    sksdf = opUnion(sksdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
-    sksdf = opUnion(sksdf, playbtnsdf);
-    sksdf = clamp(sksdf, 0.0, 1.0);
     float brightness = s.r;
     //brightness = lerp(brightness, brightness + 0.25, 1.0 - playbtnsdf);
-    brightness = lerp(brightness, brightness + 0.15, 1.0 - sksdf);
     
     return c * brightness;
 }

@@ -464,10 +464,6 @@ float4 ps_main(VS_Output input) : SV_Target
         0.5
     );
     sksymbsdf = opUnion(sksymbsdf, backsdf);
-    sksymbsdf = opUnion(
-        sksymbsdf,
-        sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 0.25), 6) - 1.0
-    );
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
     float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);
@@ -496,5 +492,6 @@ float4 ps_main(VS_Output input) : SV_Target
     c1 *= brightness;
     float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
     finalcolor = lerp(finalcolor, c1, 1.0 - boxsdf);
-    return float4(brightness, xsdf, sksymbsdf, 1.0);
+    brightness = lerp(brightness, brightness + 0.15, 1.0 - skipsdf);
+    return float4(brightness, xsdf, sksymbsdf, playsdf);
 }
