@@ -357,9 +357,9 @@ float4 ps_main(VS_Output input) : SV_Target
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
     float3 norm = raymarchvertical(px);
-    float brightness = max(dot(norm, -lightdir), 0.0); // *
-        //lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
-        //random(input.uv) * 0.025;
+    float brightness = max(dot(norm, -lightdir), 0.0) *
+        lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
+        random(input.uv) * 0.025;
     const float4 grey = float4(
         0.2,
         0.2235294117647059,
@@ -464,6 +464,10 @@ float4 ps_main(VS_Output input) : SV_Target
         0.5
     );
     sksymbsdf = opUnion(sksymbsdf, backsdf);
+    sksymbsdf = opUnion(
+        sksymbsdf,
+        sdEquilateralTriangle(rotate(px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), 0.25), 6) - 1.0
+    );
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
     float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
     c = lerp(c, barcolor, 1.0 - barsdf);

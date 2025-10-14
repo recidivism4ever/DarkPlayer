@@ -9,7 +9,8 @@ cbuffer constants : register(b0)
     int pressedButton;
 };
 
-Texture2DArray mytexture : register(t0);
+Texture2DArray albums : register(t0);
+Texture2DArray basemaps : register(t1);
 SamplerState mysampler : register(s0);
 
 #define imgradius ((170.0 / 2) * SCALE)
@@ -270,9 +271,23 @@ float4 ps2_main(VS_Output input) : SV_Target
         0.5450980392156862, 
         1.0
     );
-    float4 s = mytexture.Sample(mysampler, float3(input.uv, pressedButton));
-    float4 c = grey;
+    float playbtnsdf = clamp(sdCircle(
+        px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), pbradius + 10
+    ), 0.0, 1.0);
+    float4 s = basemaps.Sample(mysampler, float3(input.uv, pressedButton));
+    float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
+    float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
+    float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
+    c = lerp(c, orange * 1.7, 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - s.g);
     c = lerp(c, paint * 1.5, 1.0 - s.b);
-    return c * s.r;
+    float sksdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
+    sksdf = opUnion(sksdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
+    sksdf = opUnion(sksdf, playbtnsdf);
+    sksdf = clamp(sksdf, 0.0, 1.0);
+    float brightness = s.r;
+    //brightness = lerp(brightness, brightness + 0.25, 1.0 - playbtnsdf);
+    brightness = lerp(brightness, brightness + 0.15, 1.0 - sksdf);
+    
+    return c * brightness;
 }

@@ -869,7 +869,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constants->accent[0] = (accentColor & 0xff) / 255.0f;
         constants->progress = progress;
         constants->panelx = panelx;
-        constants->pressedButton = ldownid + 1;
+        constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
         d3d11DeviceContext->Unmap(constantBuffer2, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
@@ -890,7 +890,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer2);
 
-        d3d11DeviceContext->PSSetShaderResources(0, 1, &baseview);
+        d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
+        d3d11DeviceContext->PSSetShaderResources(1, 1, &baseview);
         d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
 
         d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
