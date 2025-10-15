@@ -304,6 +304,36 @@ float map(float3 p)
             );
             break;
     }
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(30 + 2, 323 + 20, 0), 177 - 20, 2),
+        a,
+        2.0
+    );
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(50 + 2, 367 - 10 + 20, 0), 133 + 10 - 20, 2),
+        a,
+        2.0
+    );
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(70 + 2, 400 - 20 + 20 - 5, 0), 120 - 20 + 5, 2),
+        a,
+        2.0
+    );
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(PLAYER_WIDTH - 70 - 2, 400 - 20 + 20 - 5, 0), 120 - 20 + 5, 2),
+        a,
+        2.0
+    );
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(PLAYER_WIDTH - 50 - 2, 367 - 10 + 20, 0), 133 + 10 - 20, 2),
+        a,
+        2.0
+    );
+    a = opSmoothSubtraction(
+        sdVerticalCapsule(p - float3(PLAYER_WIDTH - 30 - 2, 323 + 20, 0), 177 - 20, 2),
+        a,
+        2.0
+    );
     return a;
 }
 

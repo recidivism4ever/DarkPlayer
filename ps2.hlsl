@@ -7,6 +7,7 @@ cbuffer constants : register(b0)
     float progress;
     float panelx;
     int pressedButton;
+    float amplitudes[6];
 };
 
 Texture2DArray albums : register(t0);
@@ -277,10 +278,24 @@ float4 ps2_main(VS_Output input) : SV_Target
     float4 s = basemaps.Sample(mysampler, float3(input.uv, pressedButton));
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
+    float y0 = 500 + (395 - 500) * amplitudes[0];
+    float y1 = 500 + (377 - 500) * amplitudes[1];
+    float y2 = 500 + (343 - 500) * amplitudes[2];
+    float y3 = 500 + (343 - 500) * amplitudes[3];
+    float y4 = 500 + (377 - 500) * amplitudes[4];
+    float y5 = 500 + (395 - 500) * amplitudes[5];
+    float vis = capsuleSDF(px, float2(32, y0), float2(32, 500), 3);
+    vis = opUnion(vis, capsuleSDF(px, float2(52, y1), float2(52, 500), 3));
+    vis = opUnion(vis, capsuleSDF(px, float2(72, y2), float2(72, 500), 3));
+    vis = opUnion(vis, capsuleSDF(px, float2(PLAYER_WIDTH - 72, y3), float2(PLAYER_WIDTH - 72, 500), 3));
+    vis = opUnion(vis, capsuleSDF(px, float2(PLAYER_WIDTH - 52, y4), float2(PLAYER_WIDTH - 52, 500), 3));
+    vis = opUnion(vis, capsuleSDF(px, float2(PLAYER_WIDTH - 32, y5), float2(PLAYER_WIDTH - 32, 500), 3));
+    vis = clamp(vis, 0.0, 1.0);
     float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
     c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - s.a), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - s.g);
     c = lerp(c, paint * 1.5, 1.0 - s.b);
+    c = lerp(c, lerp(orange, blue, (500 - px.y) / (500 - 395)), 1.0 - vis);
     float brightness = s.r;
     //brightness = lerp(brightness, brightness + 0.25, 1.0 - playbtnsdf);
     

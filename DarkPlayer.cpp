@@ -676,6 +676,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float progress;
         float panelx;
         int pressedButton;
+        float amplitudes[6];
     };
 
     ID3D11Buffer* constantBuffer;
@@ -881,6 +882,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constants->progress = progress;
         constants->panelx = panelx;
         constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
+        for (int i = 0; i < VISBARS; i++) {
+            constants->amplitudes[i] = amplitudes[i];
+        }
         d3d11DeviceContext->Unmap(constantBuffer2, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };

@@ -114,7 +114,7 @@ void feedAudio() {
     static int playhead = 0;
     while(1){
         XAUDIO2_VOICE_STATE state;
-        pSourceVoice->GetState(&state);
+        pSourceVoice->GetState(&state, XAUDIO2_VOICE_NOSAMPLESPLAYED);
         if (state.BuffersQueued >= 2) break;
         float* cur = buf + curbuf * BUFSZ * 2;
         while (samples.size() < BUFSZ*2){
