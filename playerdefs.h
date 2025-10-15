@@ -8,3 +8,5 @@
 #define PANEL_LEFT_STOP (-PLAYER_WIDTH/2 - 32)
 #define PANEL_RIGHT_STOP (PLAYER_WIDTH/2)
 #define NBUTTONS 6
+#define VISBARS 6
+extern float amplitudes[VISBARS];

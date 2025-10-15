@@ -375,6 +375,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     init_image_loader();
 
+    init_audio();
+
     getAccent();
 
     std::map<std::wstring, Album> albums = iterateAlbums();
@@ -383,6 +385,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         album_keys.push_back(pair.first);
     }
     nAlbums = album_keys.size();
+
+    loadSong(albums[album_keys[0]].songs[3].path);
+
+    play();
     
     // Open a window
     HWND hwnd;
@@ -855,6 +861,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
+
+        feedAudio();
 
         QueryPerformanceCounter(&t1);
         LARGE_INTEGER dif;

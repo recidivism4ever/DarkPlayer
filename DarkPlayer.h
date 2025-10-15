@@ -6,6 +6,7 @@
 #define NOMINMAX
 #define UNICODE
 #include <windows.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 
@@ -23,6 +24,19 @@
 
 #include <d3dcsx.h>
 
+#include <xaudio2.h>
+#include <xaudio2fx.h>
+#pragma comment(lib, "xaudio2.lib")
+
+#include <mfidl.h>
+#include <mfobjects.h>
+#include <mferror.h>
+#include <mfapi.h>
+#include <mfreadwrite.h>
+#pragma comment(lib, "mfuuid.lib")
+#pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+
 #include <shlobj.h>
 #include <propvarutil.h>
 #include <Propkey.h>
@@ -37,6 +51,8 @@
 
 #include <assert.h>
 
+
+#include "kiss_fftr.h"
 
 void init_image_loader();
 
@@ -63,3 +79,12 @@ struct Album {
 
 std::map<std::wstring, Album> iterateAlbums();
 
+void init_audio();
+
+HRESULT loadSong(std::wstring input_file);
+
+void play();
+
+void pause();
+
+void feedAudio();
