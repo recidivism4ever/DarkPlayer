@@ -191,7 +191,23 @@ float sdBox(float2 p, float2 b)
 
 float map(float3 p)
 {
-    return 0.0;
+    float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
+    float a = opSmoothUnion(
+        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), proglen, 3),
+        sdPlane(p, float3(0, 0, 1), 0),
+        1.0
+    );
+    a = opSmoothUnion(
+        sdRoundedTruncatedCone(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), 10, 9, 5, 1),
+        a,
+        4.0
+    );
+    a = opSmoothSubtraction(
+        sdHorizontalCapsule(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), PLAYER_WIDTH - 44 * SCALE - proglen, 3),
+        a,
+        1.0
+    );
+    return a;
 }
 
 float3 getnormal(float3 p)

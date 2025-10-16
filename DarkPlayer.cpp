@@ -272,7 +272,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         ScreenToClient(hwnd, &cursor_point);
 
         // Since we are drawing our own caption, this needs to be a custom test
-        if (cursor_point.y < 31) {
+        if (cursor_point.y < 31 && hoveredid < 0) {
             return HTCAPTION;
         }
 
