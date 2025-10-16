@@ -7,6 +7,7 @@ cbuffer constants : register(b0)
     float progress;
     float panelx;
     int pressedButton;
+    int playing;
     float a0, a1, a2, a3, a4, a5;
 };
 
@@ -339,8 +340,18 @@ float4 ps2_main(VS_Output input) : SV_Target
     }
     else
     {
+        #define PSDIST 4
+        #define PSHH 4
+        #define PSRAD 2
+        float psym = playing ? 
+        clamp(
+            opUnion(
+            capsuleSDF(px, float2(PLAYER_WIDTH / 2 - PSDIST, PLAYER_HEIGHT - 75 * SCALE + PSHH), float2(PLAYER_WIDTH / 2 - PSDIST, PLAYER_HEIGHT - 75 * SCALE - PSHH), PSRAD),
+            capsuleSDF(px, float2(PLAYER_WIDTH / 2 + PSDIST, PLAYER_HEIGHT - 75 * SCALE + PSHH), float2(PLAYER_WIDTH / 2 + PSDIST, PLAYER_HEIGHT - 75 * SCALE - PSHH), PSRAD)
+        ), 0.0, 1.0)
+        : s.a;
         c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
-        c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - s.a), 1.0 - playbtnsdf);
+        c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - psym), 1.0 - playbtnsdf);
         c = lerp(c, paint, 1.0 - s.g);
         c = lerp(c, paint * 1.5, 1.0 - s.b);
         c = lerp(c, lerp(orange, blue, (500 - px.y) / (500 - 395)), 1.0 - vis);

@@ -71,6 +71,7 @@ int actiontype;
 #define ACTION_LDOWN 1
 #define ACTION_LUP 2
 
+bool playing = false;
 float progress = 0.10f;
 double elapsedSec = 0.0;
 double currentSongDuration = 0.0;
@@ -159,6 +160,8 @@ void doButtons(LPARAM lparam, int action) {
     if (state == DEFAULT) {
         if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
             printf("play/pause\n");
+            if (playing) pause();
+            else play();
         }
         if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
             printf("skip backward\n");
@@ -389,7 +392,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     nAlbums = album_keys.size();
 
-    loadSong(albums[album_keys[1]].songs[3].path);
+    loadSong(albums[album_keys[6]].songs[8].path);
 
     play();
     
@@ -679,6 +682,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float progress;
         float panelx;
         int pressedButton;
+        int playing;
         float a0, a1, a2, a3, a4, a5;
     };
 
@@ -886,6 +890,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constants->progress = progress;
         constants->panelx = panelx;
         constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
+        constants->playing = playing;
         constants->a0 = amplitudes[0];
         constants->a1 = amplitudes[1];
         constants->a2 = amplitudes[2];

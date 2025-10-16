@@ -86,6 +86,8 @@ void init_audio();
 
 HRESULT loadSong(std::wstring input_file);
 
+extern bool playing;
+
 void play();
 
 void pause();

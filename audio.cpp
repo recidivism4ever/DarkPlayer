@@ -52,10 +52,12 @@ void init_audio() {
 
 void play() {
     HRESULT hr = pSourceVoice->Start(0);
+    if (SUCCEEDED(hr)) playing = true;
 }
 
 void pause() {
     HRESULT hr = pSourceVoice->Stop(0);
+    if (SUCCEEDED(hr)) playing = false;
 }
 
 int BinSrch(int freq)
@@ -195,7 +197,7 @@ void feedAudio() {
     }
 
     printf("step: %f m: %d\n", step, m);
-    if (m > 9) step += 0.001;
+    if (m > 10) step += 0.001;
 
     static float smooth[6];
     {
