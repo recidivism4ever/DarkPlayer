@@ -239,7 +239,7 @@ void feedAudio() {
     }
 
     printf("step: %f m: %d\n", step, m);
-    if (m > 6) step += 0.001;
+    if (m > 11) step += 0.001;
 
     static float smooth[6];
     {

@@ -387,7 +387,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     nAlbums = album_keys.size();
 
-    loadSong(albums[album_keys[6]].songs[8].path);
+    loadSong(albums[album_keys[1]].songs[3].path);
 
     play();
     
@@ -927,7 +927,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         // Draw the text
         {
-            const wchar_t* text = L"Low Life";
+            const wchar_t* text = L"Poisoned";
             d2dRenderTarget->DrawText(
                 text,
                 wcslen(text),
@@ -938,7 +938,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         {
-            const wchar_t* text = L"Future ft. The Weeknd";
+            const wchar_t* text = L"The Third Twin";
             d2dRenderTarget->DrawText(
                 text,
                 wcslen(text),
