@@ -7,7 +7,7 @@ cbuffer constants : register(b0)
     float progress;
     float panelx;
     int pressedButton;
-    float amplitudes[6];
+    float a0, a1, a2, a3, a4, a5;
 };
 
 Texture2DArray albums : register(t0);
@@ -278,12 +278,12 @@ float4 ps2_main(VS_Output input) : SV_Target
     float4 s = basemaps.Sample(mysampler, float3(input.uv, pressedButton));
     float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
     float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
-    float y0 = 500 + (395 - 500) * amplitudes[0];
-    float y1 = 500 + (377 - 500) * amplitudes[1];
-    float y2 = 500 + (343 - 500) * amplitudes[2];
-    float y3 = 500 + (343 - 500) * amplitudes[3];
-    float y4 = 500 + (377 - 500) * amplitudes[4];
-    float y5 = 500 + (395 - 500) * amplitudes[5];
+    float y0 = 500 + (343 - 500) * a0;
+    float y1 = 500 + (377 - 500) * a1;
+    float y2 = 500 + (395 - 500) * a2;
+    float y3 = 500 + (395 - 500) * a3;
+    float y4 = 500 + (377 - 500) * a4;
+    float y5 = 500 + (343 - 500) * a5;
     float vis = capsuleSDF(px, float2(32, y0), float2(32, 500), 3);
     vis = opUnion(vis, capsuleSDF(px, float2(52, y1), float2(52, 500), 3));
     vis = opUnion(vis, capsuleSDF(px, float2(72, y2), float2(72, 500), 3));

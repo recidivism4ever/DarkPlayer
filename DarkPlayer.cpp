@@ -11,6 +11,7 @@
 float remainingTick = 0.0f;
 LARGE_INTEGER freq, t0, t1;
 double countsPerTick, accum;
+float frameDeltaSec;
 
 DWORD useAccent;
 DWORD accentColor;
@@ -386,7 +387,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     nAlbums = album_keys.size();
 
-    loadSong(albums[album_keys[0]].songs[3].path);
+    loadSong(albums[album_keys[6]].songs[8].path);
 
     play();
     
@@ -676,7 +677,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float progress;
         float panelx;
         int pressedButton;
-        float amplitudes[6];
+        float a0, a1, a2, a3, a4, a5;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -870,6 +871,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         dif.QuadPart = t1.QuadPart - t0.QuadPart;
         t0 = t1;
         accum += (double)dif.QuadPart;
+        frameDeltaSec = ((double)dif.QuadPart / freq.QuadPart);
         tickloop();
 
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
@@ -882,9 +884,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         constants->progress = progress;
         constants->panelx = panelx;
         constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
-        for (int i = 0; i < VISBARS; i++) {
-            constants->amplitudes[i] = amplitudes[i];
-        }
+        constants->a0 = amplitudes[0];
+        constants->a1 = amplitudes[1];
+        constants->a2 = amplitudes[2];
+        constants->a3 = amplitudes[3];
+        constants->a4 = amplitudes[4];
+        constants->a5 = amplitudes[5];
         d3d11DeviceContext->Unmap(constantBuffer2, 0);
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };

@@ -105,6 +105,20 @@ void pause() {
     HRESULT hr = pSourceVoice->Stop(0);
 }
 
+int BinSrch(int freq)
+{
+    int i;
+    if (freq <= 20 || freq > 20000)
+        return -1;
+    freq -= 20;
+    for (i = 0; i < 60; i++)
+    {
+        if (freq > (i * 333) && freq <= (i + 1) * 333)
+            break;
+    }
+    return i;
+}
+
 void feedAudio() {
 #define BUFSZ 44100
     static int curbuf = 0;
@@ -112,12 +126,12 @@ void feedAudio() {
     static std::vector<float> samples;
     static int lastSP = 0;
     static int playhead = 0;
-    while(1){
+    while (1) {
         XAUDIO2_VOICE_STATE state;
         pSourceVoice->GetState(&state, XAUDIO2_VOICE_NOSAMPLESPLAYED);
         if (state.BuffersQueued >= 2) break;
         float* cur = buf + curbuf * BUFSZ * 2;
-        while (samples.size() < BUFSZ*2){
+        while (samples.size() < BUFSZ * 2) {
             DWORD streamFlags = 0;
             HRESULT hr = pReader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, NULL, &streamFlags, NULL, &pSample);
             if (FAILED(hr)) break;
@@ -162,18 +176,18 @@ void feedAudio() {
         curbuf = (curbuf + 1) % 3;
     }
 
-    const int N_SAMPLES = 512;
+    const int N_SAMPLES = 1024;
     const int N_BINS = N_SAMPLES / 2 + 1;
 
     // Allocate input buffer for audio samples
-    static float audio_in[N_SAMPLES];
+    static float in[N_SAMPLES];
 
     // Allocate output buffer for frequency bins
-    kiss_fft_cpx frequency_out[N_BINS];
+    static kiss_fft_cpx out[N_BINS];
 
     XAUDIO2_VOICE_STATE state;
     pSourceVoice->GetState(&state);
-    playhead = (playhead + state.SamplesPlayed - lastSP) % (3*BUFSZ);
+    playhead = (playhead + state.SamplesPlayed - lastSP) % (3 * BUFSZ);
     lastSP = state.SamplesPlayed;
 
     static bool hannInitialized = false;
@@ -187,47 +201,58 @@ void feedAudio() {
     }
 
     int start = playhead - N_SAMPLES / 2;
-    if (playhead < 0) playhead = 3 * BUFSZ + playhead;
+    if (start < 0) start = 3 * BUFSZ + start;
     for (int i = 0; i < N_SAMPLES; i++) {
-        audio_in[i] = (buf[((start + i) % (3 * BUFSZ)) * 2] + buf[((start + i) % (3 * BUFSZ)) * 2 + 1]) * 0.5f * hann[i];
+        in[i] = (buf[((start + i) % (3 * BUFSZ)) * 2] + buf[((start + i) % (3 * BUFSZ)) * 2 + 1]) * 0.5f * hann[i];
     }
 
     // Allocate the configuration object
     kiss_fftr_cfg cfg = kiss_fftr_alloc(N_SAMPLES, 0, nullptr, nullptr);
 
     // Execute the FFT
-    kiss_fftr(cfg, audio_in, frequency_out);
-
-    static float target_frequencies[] = { 80.0f, 200.0f, 500.0f, 1200.0f, 3500.0f, 10000.0f };
-    
-    for (int i = 0; i < VISBARS; i++) {
-        float target_freq = target_frequencies[i];
-        int bin_index = static_cast<int>(std::round(target_freq * N_SAMPLES / 44100.0f));
-
-        if (bin_index >= N_BINS) {
-            // Handle cases where the target frequency is above the Nyquist frequency
-            amplitudes[i] = 0.0f;
-            continue;
-        }
-
-        float amplitude;
-        if (bin_index == 0 || bin_index == N_SAMPLES / 2) {
-            // DC or Nyquist bin
-            amplitude = std::abs(frequency_out[bin_index].r) / N_SAMPLES;
-        }
-        else {
-            amplitude = std::sqrt(frequency_out[bin_index].r * frequency_out[bin_index].r + frequency_out[bin_index].i * frequency_out[bin_index].i);
-            amplitude =  2.0f * amplitude / N_SAMPLES;
-        }
-        amplitudes[i] = amplitude;
-    };
-
-    for (int i = 0; i < VISBARS; i++) {
-        //std::cout << "Amplitude at " << target_frequencies[i] << "Hz: " << amplitudes[i] << std::endl;
-    }
+    kiss_fftr(cfg, in, out);
 
     // Free the configuration object
     kiss_fftr_free(cfg);
+
+    static float mags[N_BINS];
+
+    // "Squash" into the Logarithmic Scale
+    static float step = 1.06;
+    float lowf = 1.0f;
+    size_t m = 0;
+    float max_amp = 1.0f;
+    for (float f = lowf; (size_t)f < N_SAMPLES / 2; f = ceilf(f * step)) {
+        float f1 = ceilf(f * step);
+        float a = 0.0f;
+        for (size_t q = (size_t)f; q < N_SAMPLES / 2 && q < (size_t)f1; ++q) {
+            float b = sqrtf((out[q].r * out[q].r) + (out[q].i * out[q].i));
+            if (b > a) a = b;
+        }
+        if (max_amp < a) max_amp = a;
+        mags[m++] = a;
+    }
+
+    // Normalize Frequencies to 0..1 range
+    for (size_t i = 0; i < m; ++i) {
+        mags[i] /= max_amp;
+    }
+
+    printf("step: %f m: %d\n", step, m);
+    if (m > 6) step += 0.001;
+
+    static float smooth[6];
+    {
+        //memcpy(amplitudes, mags, sizeof(amplitudes));
+    }
+    // Smooth out and smear the values
+    for (size_t i = 0; i < 6; ++i) {
+        float smoothness = 32;
+        smooth[i] += (mags[i] - smooth[i]) * std::min(1.0f, smoothness * frameDeltaSec);
+        float smearness = 24;
+        amplitudes[i] += (smooth[i] - amplitudes[i]) * std::min(1.0f, smearness * frameDeltaSec);
+    }
+
 }
 
 HRESULT loadSong(std::wstring input_file) {

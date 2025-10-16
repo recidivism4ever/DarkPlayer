@@ -48,6 +48,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <array>
 
 #include <assert.h>
 
@@ -89,3 +90,5 @@ void play();
 void pause();
 
 void feedAudio();
+
+extern float frameDeltaSec;
