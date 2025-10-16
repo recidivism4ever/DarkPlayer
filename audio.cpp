@@ -50,53 +50,6 @@ void init_audio() {
     hr = pXAudio2->CreateSourceVoice(&pSourceVoice, &wfx);
 }
 
-// Assumes pcm_data is a vector of floats, sampleRate, and channels are known
-void PlayAudioWithXAudio2(const std::vector<float>& pcm_data, UINT32 sampleRate, UINT32 channels) {
-
-    HRESULT hr = XAudio2Create(&pXAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
-
-    // Create a mastering voice for the system's default audio device
-    hr = pXAudio2->CreateMasteringVoice(&pMasteringVoice);
-
-    // Define the format of your audio data
-    WAVEFORMATEX wfx = { 0 };
-    wfx.wFormatTag = WAVE_FORMAT_IEEE_FLOAT; // Our PCM data is in floating-point format
-    wfx.nChannels = channels;
-    wfx.nSamplesPerSec = sampleRate;
-    wfx.wBitsPerSample = 32; // sizeof(float)
-    wfx.nBlockAlign = wfx.nChannels * (wfx.wBitsPerSample / 8);
-    wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-
-    // Create a source voice to play the sound
-    hr = pXAudio2->CreateSourceVoice(&pSourceVoice, &wfx);
-
-    // Create an XAUDIO2_BUFFER structure to describe our audio data
-    XAUDIO2_BUFFER buffer = { 0 };
-    buffer.AudioBytes = static_cast<UINT32>(pcm_data.size() * sizeof(float));
-    buffer.pAudioData = reinterpret_cast<BYTE*>(const_cast<float*>(pcm_data.data()));
-
-    // Submit the buffer and start playback
-    hr = pSourceVoice->SubmitSourceBuffer(&buffer);
-    if (FAILED(hr)) goto cleanup;
-
-    hr = pSourceVoice->Start(0);
-    if (FAILED(hr)) goto cleanup;
-
-    // Wait for the audio to finish playing
-    while (true) {
-        XAUDIO2_VOICE_STATE state;
-        pSourceVoice->GetState(&state);
-        if (state.BuffersQueued == 0) {
-            break;
-        }
-        Sleep(10); // Check every 10 milliseconds
-    }
-
-    std::cout << "Audio playback finished." << std::endl;
-
-cleanup:;
-}
-
 void play() {
     HRESULT hr = pSourceVoice->Start(0);
 }
@@ -190,6 +143,9 @@ void feedAudio() {
     playhead = (playhead + state.SamplesPlayed - lastSP) % (3 * BUFSZ);
     lastSP = state.SamplesPlayed;
 
+    elapsedSec = (state.SamplesPlayed / 44100.0);
+    progress = elapsedSec / currentSongDuration;
+
     static bool hannInitialized = false;
     static float hann[N_SAMPLES];
     if (!hannInitialized) {
@@ -255,6 +211,59 @@ void feedAudio() {
 
 }
 
+double getMediaDurationSec(const WCHAR* filePath){
+    IMFMediaSource* pMSource = nullptr;
+    IMFPresentationDescriptor* pPD = nullptr;
+    PROPVARIANT var;
+    HRESULT hr = S_OK;
+
+    MF_OBJECT_TYPE ObjectType = MF_OBJECT_INVALID;
+
+    IMFSourceResolver* pSourceResolver = NULL;
+    IUnknown* pSource = NULL;
+
+    UINT64 duration100ns = 0;
+
+    hr = MFCreateSourceResolver(&pSourceResolver);
+    if (FAILED(hr))
+    {
+        goto done;
+    }
+
+    hr = pSourceResolver->CreateObjectFromURL(
+        filePath,                       // URL of the source.
+        MF_RESOLUTION_MEDIASOURCE,  // Create a source object.
+        NULL,                       // Optional property store.
+        &ObjectType,        // Receives the created object type. 
+        &pSource            // Receives a pointer to the media source.
+    );
+    if (FAILED(hr))
+    {
+        goto done;
+    }
+
+    hr = pSource->QueryInterface(IID_PPV_ARGS(&pMSource));
+
+    if (SUCCEEDED(hr))
+    {
+        hr = pMSource->CreatePresentationDescriptor(&pPD);
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        hr = pPD->GetUINT64(MF_PD_DURATION, &duration100ns);
+    }
+
+done:
+    PropVariantClear(&var);
+    SafeRelease(&pPD);
+    SafeRelease(&pMSource);
+    SafeRelease(&pSource);
+    SafeRelease(&pSourceResolver);
+
+    return (double)duration100ns * 100.0 / 1e9;
+}
+
 HRESULT loadSong(std::wstring input_file) {
 
     // Create the source reader from the MP3 file
@@ -298,6 +307,8 @@ HRESULT loadSong(std::wstring input_file) {
     }
 
     SafeRelease(&pOutputMediaType);
+
+    currentSongDuration = getMediaDurationSec(input_file.c_str());
 
     return hr;
 }

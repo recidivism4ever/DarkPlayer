@@ -71,7 +71,9 @@ int actiontype;
 #define ACTION_LDOWN 1
 #define ACTION_LUP 2
 
-float progress = .75f;
+float progress = 0.10f;
+double elapsedSec = 0.0;
+double currentSongDuration = 0.0;
 #define SWINGOUT_TICKS 10
 float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;

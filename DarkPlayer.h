@@ -66,6 +66,7 @@ struct Song {
     std::wstring path;
     std::wstring title;
     UINT number;
+    double durationSec;
 
     bool operator<(const Song& other) const {
         return number < other.number;
@@ -92,3 +93,11 @@ void pause();
 void feedAudio();
 
 extern float frameDeltaSec;
+
+extern float progress;
+
+extern double elapsedSec;
+
+extern double currentSongDuration;
+
+double getMediaDurationSec(const WCHAR* filePath);

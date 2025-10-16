@@ -218,6 +218,26 @@ UINT32 getTrackNumber(IShellItem* psi) {
     return trackNumber;
 }
 
+double getDurationSec(IShellItem* psi) {
+    IPropertyStore* pps = nullptr;
+    HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
+    if (FAILED(hr)) {
+        return 0;
+    }
+
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+
+    hr = pps->GetValue(PKEY_Media_Duration, &pv);
+    UINT64 duration100ns = 0;
+    if (SUCCEEDED(hr)) {
+        PropVariantToUInt64(pv, &duration100ns);
+        PropVariantClear(&pv);
+    }
+    pps->Release();
+    return (double)duration100ns * 100.0 / 1e9;
+}
+
 // Recursive function to find music items and their albums
 void findMusicInFolder(IShellItem* psiFolder,
     std::map<std::wstring, Album>& albums) {
@@ -245,7 +265,7 @@ void findMusicInFolder(IShellItem* psiFolder,
                 psi->GetDisplayName(SIGDN_FILESYSPATH, &pwszPath);
                 if (pwszPath) {
                     Song s = {
-                        pwszPath, getSongTitle(psi), getTrackNumber(psi)
+                        pwszPath, getSongTitle(psi), getTrackNumber(psi), getDurationSec(psi)
                     };
                     if (albums[albumTitle].artist.empty()) {
                         albums[albumTitle].artist = getArtist(psi);
