@@ -307,7 +307,33 @@ float4 ps2_main(VS_Output input) : SV_Target
     vis = opUnion(vis, capsuleSDF(px, float2(PLAYER_WIDTH - 52, y4), float2(PLAYER_WIDTH - 52, 500), 3));
     vis = opUnion(vis, capsuleSDF(px, float2(PLAYER_WIDTH - 32, y5), float2(PLAYER_WIDTH - 32, 500), 3));
     vis = clamp(vis, 0.0, 1.0);
-    float4 c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
+    float4 c;
+    if (px.y > 514 && px.y < 582)
+    {
+        float3 norm = raymarchvertical(px);
+        float brightness = max(dot(norm, -lightdir), 0.0) *
+            lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
+            random(input.uv) * 0.025;
+        float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
+        const float4 barcolor = lerp(orange, blue, (max(px.x, 22 * SCALE) - 22 * SCALE) / proglen);
+        const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
+        float barsdf = capsuleSDF(
+            px, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
+            float2(22 * SCALE + proglen,
+            PLAYER_HEIGHT - 157 * SCALE), 3
+        );
+        barsdf = opUnion(
+            barsdf,
+            sdCircle(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 12)
+        );
+        barsdf = opSmoothSubtraction(
+            sdRing(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 10, 6),
+            barsdf,
+            0.25
+        );
+        barsdf = clamp(barsdf, 0.0, 1.0);
+        c = lerp(grey, barcolor, 1.0 - barsdf);
+    } else c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
     c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - s.a), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - s.g);
     c = lerp(c, paint * 1.5, 1.0 - s.b);
