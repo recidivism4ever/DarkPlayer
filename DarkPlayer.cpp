@@ -3,6 +3,7 @@
 #include "vs.h"
 #include "ps.h"
 #include "ps2.h"
+#include "ps3.h"
 
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
@@ -79,7 +80,10 @@ double currentSongDuration = 0.0;
 float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;
 float panelx = PANEL_LEFT_STOP;
+float prevpanely = 70.0f;
+float curpanely = 70.0f;
 float panely = 70.0f;
+float panelyvel = 0.0f;
 int panelticks = 0;
 int nAlbums;
 
@@ -215,6 +219,14 @@ void tick() {
             state = DEFAULT;
         }
     }
+    prevpanely = curpanely;
+    curpanely += panelyvel;
+    if (curpanely > 70.0f) {
+        curpanely = 70.0f;
+        panelyvel = 0.0f;
+    }
+    panelyvel -= panelyvel * 0.2f;
+    if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
 }
 
 void tickloop() {
@@ -225,6 +237,7 @@ void tickloop() {
     remainingTick = accum / countsPerTick;
 
     panelx = prevpanelx + (curpanelx - prevpanelx) * remainingTick;
+    panely = prevpanely + (curpanely - prevpanely) * remainingTick;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -291,6 +304,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
             0, 0, 0, 0,
             SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
         );
+        break;
+    }
+    case WM_MOUSEWHEEL:
+    {
+        short zDelta = GET_WHEEL_DELTA_WPARAM(wparam);
+        panelyvel += 0.1f * zDelta;
+
+        if (zDelta > 0)
+        {
+            // Mouse wheel scrolled up
+            // Implement your upward scrolling logic here
+        }
+        else if (zDelta < 0)
+        {
+            // Mouse wheel scrolled down
+            // Implement your downward scrolling logic here
+        }
         break;
     }
     case WM_MOUSEMOVE: {
@@ -561,6 +591,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         HRESULT hResult = d3d11Device->CreatePixelShader(g_ps2_main, sizeof(g_ps2_main), nullptr, &pixelShader2);
         assert(SUCCEEDED(hResult));
     }
+    ID3D11PixelShader* pixelShader3;
+    {
+        HRESULT hResult = d3d11Device->CreatePixelShader(g_ps3_main, sizeof(g_ps3_main), nullptr, &pixelShader3);
+        assert(SUCCEEDED(hResult));
+    }
 
     // Create Input Layout
     ID3D11InputLayout* inputLayout;
@@ -601,6 +636,96 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D3D11_SUBRESOURCE_DATA vertexSubresourceData = { vertexData };
 
         HRESULT hResult = d3d11Device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, &vertexBuffer);
+        assert(SUCCEEDED(hResult));
+    }
+
+    ID3D11Buffer* vertexBuffer2;
+    UINT numVerts2;
+    UINT stride2;
+    UINT offset2;
+    {
+#define ALBW (67.0f / (PLAYER_WIDTH))
+#define ALBH (67.0f / (PLAYER_HEIGHT))
+#define ALBW2 (2.0f*ALBW)
+#define ALBH2 (2.0f*ALBH)
+#define ALBHT ((2.0f * ALBUM_HEIGHT) / PLAYER_HEIGHT)
+#define ALBHM ((4.0f * ALBUM_HEIGHT) / PLAYER_HEIGHT)
+#define ALBHB ((6.0f * ALBUM_HEIGHT) / PLAYER_HEIGHT)
+        stride2 = 4 * sizeof(float);
+        numVerts2 = 6*nAlbums;
+        UINT vsize = numVerts2 * stride2;
+        offset2 = 0;
+        float* vd = (float*)malloc(vsize);
+        float y = 0.0f;
+        for (int i = 0; i < nAlbums; i++) {
+            float cy = i == 0 ? ALBHT : i == nAlbums - 1 ? ALBHM : ALBHB;
+
+            vd[i * 24 + 0] = -ALBW2;
+            vd[i * 24 + 1] = y + ALBH2;
+            vd[i * 24 + 2] = 0.5f - ALBW;
+            vd[i * 24 + 3] = cy - ALBH;
+
+            vd[i * 24 + 4] = ALBW2;
+            vd[i * 24 + 5] = y - ALBH2;
+            vd[i * 24 + 6] = 0.5f + ALBW;
+            vd[i * 24 + 7] = cy + ALBH;
+
+            vd[i * 24 + 8] = -ALBW2;
+            vd[i * 24 + 9] = y - ALBH2;
+            vd[i * 24 + 10] = 0.5f - ALBW;
+            vd[i * 24 + 11] = cy + ALBH;
+
+            vd[i * 24 + 12] = -ALBW2;
+            vd[i * 24 + 13] = y + ALBH2;
+            vd[i * 24 + 14] = 0.5f - ALBW;
+            vd[i * 24 + 15] = cy - ALBH;
+
+            vd[i * 24 + 16] = ALBW2;
+            vd[i * 24 + 17] = y + ALBH2;
+            vd[i * 24 + 18] = 0.5f + ALBW;
+            vd[i * 24 + 19] = cy - ALBH;
+
+            vd[i * 24 + 20] = ALBW2;
+            vd[i * 24 + 21] = y - ALBH2;
+            vd[i * 24 + 22] = 0.5f + ALBW;
+            vd[i * 24 + 23] = cy + ALBH;
+
+            y -= (ALBUM_HEIGHT * 4.0f) / PLAYER_HEIGHT;
+        }
+        /*
+         { // x, y, u, v
+            .0f - ALBW2, .0f + ALBH2, .5f-ALBW, ALBHF -ALBH,
+            .0f + ALBW2, .0f - ALBH2, .5f+ALBW, ALBHF +ALBH,
+            .0f - ALBW2, .0f - ALBH2, .5f-ALBW, ALBHF +ALBH,
+            .0f - ALBW2, .0f + ALBH2, .5f-ALBW, ALBHF -ALBH,
+            .0f + ALBW2, .0f + ALBH2, .5f+ALBW, ALBHF -ALBH,
+            .0f + ALBW2, .0f - ALBH2, .5f+ALBW, ALBHF +ALBH,
+
+            .0f - ALBW2, ALBH2*2 + ALBH2, .5f - ALBW, .5f - ALBH,
+            .0f + ALBW2, ALBH2*2 - ALBH2, .5f + ALBW, .5f + ALBH,
+            .0f - ALBW2, ALBH2*2 - ALBH2, .5f - ALBW, .5f + ALBH,
+            .0f - ALBW2, ALBH2*2 + ALBH2, .5f - ALBW, .5f - ALBH,
+            .0f + ALBW2, ALBH2*2 + ALBH2, .5f + ALBW, .5f - ALBH,
+            .0f + ALBW2, ALBH2*2 - ALBH2, .5f + ALBW, .5f + ALBH,
+        };*/
+        /*float vertexData[] = { // x, y, u, v
+            -1.0f,  1.0f, 0.f, 0.f,
+            1.0f, -1.0f, 1.f, 1.f,
+            -1.0f, -1.0f, 0.f, 1.f,
+            -1.0f,  1.0f, 0.f, 0.f,
+            1.0f,  1.0f, 1.f, 0.f,
+            1.0f, -1.0f, 1.f, 1.f
+        };*/
+        
+
+        D3D11_BUFFER_DESC vertexBufferDesc = {};
+        vertexBufferDesc.ByteWidth = vsize;
+        vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+        vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA vertexSubresourceData = { vd };
+
+        HRESULT hResult = d3d11Device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, &vertexBuffer2);
         assert(SUCCEEDED(hResult));
     }
 
@@ -669,12 +794,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create Constant Buffer
     struct Constants
     {
-        float progress;
-        float panelx;
-        float panely;
         int pressedButton;
-        int nAlbums;
-        int albumLengths[MAX_ALBUMS];
     };
     struct Constants2
     {
@@ -684,6 +804,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         int pressedButton;
         int playing;
         float a0, a1, a2, a3, a4, a5;
+    };
+    struct Constants3
+    {
+        float center[2];
+        int albumId;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -702,12 +827,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
         D3D11_BUFFER_DESC constantBufferDesc = {};
         // ByteWidth must be a multiple of 16, per the docs
-        constantBufferDesc.ByteWidth = sizeof(Constants) + 0xf & 0xfffffff0;
+        constantBufferDesc.ByteWidth = sizeof(Constants2) + 0xf & 0xfffffff0;
         constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
         constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
         HRESULT hResult = d3d11Device->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer2);
+        assert(SUCCEEDED(hResult));
+    }
+    ID3D11Buffer* constantBuffer3;
+    {
+        D3D11_BUFFER_DESC constantBufferDesc = {};
+        // ByteWidth must be a multiple of 16, per the docs
+        constantBufferDesc.ByteWidth = sizeof(Constants3) + 0xf & 0xfffffff0;
+        constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+        constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+        HRESULT hResult = d3d11Device->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer3);
         assert(SUCCEEDED(hResult));
     }
 
@@ -823,14 +960,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
         d3d11DeviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
         Constants* constants = (Constants*)(mappedSubresource.pData);
-        constants->progress = progress;
-        constants->panelx = panelx;
-        constants->panely = panely;
         constants->pressedButton = bi;
-        constants->nAlbums = nAlbums;
-        for (int i = 0; i < album_keys.size(); i++) {
-            constants->albumLengths[i] = albums[album_keys[i]].songs.size();
-        }
         d3d11DeviceContext->Unmap(constantBuffer, 0);
 
         d3d11DeviceContext->OMSetRenderTargets(1, &pRTVs[bi], nullptr);
@@ -880,24 +1010,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         frameDeltaSec = ((double)dif.QuadPart / freq.QuadPart);
         tickloop();
 
-        D3D11_MAPPED_SUBRESOURCE mappedSubresource;
-        d3d11DeviceContext->Map(constantBuffer2, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
-        Constants2* constants = (Constants2*)(mappedSubresource.pData);
-        constants->accent[3] = useAccent && isFocused;
-        constants->accent[2] = ((accentColor>>16) & 0xff) / 255.0f;
-        constants->accent[1] = ((accentColor>>8) & 0xff) / 255.0f;
-        constants->accent[0] = (accentColor & 0xff) / 255.0f;
-        constants->progress = progress;
-        constants->panelx = panelx;
-        constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
-        constants->playing = playing;
-        constants->a0 = amplitudes[0];
-        constants->a1 = amplitudes[1];
-        constants->a2 = amplitudes[2];
-        constants->a3 = amplitudes[3];
-        constants->a4 = amplitudes[4];
-        constants->a5 = amplitudes[5];
-        d3d11DeviceContext->Unmap(constantBuffer2, 0);
+        {
+            D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+            d3d11DeviceContext->Map(constantBuffer2, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
+            Constants2* constants = (Constants2*)(mappedSubresource.pData);
+            constants->accent[3] = useAccent && isFocused;
+            constants->accent[2] = ((accentColor >> 16) & 0xff) / 255.0f;
+            constants->accent[1] = ((accentColor >> 8) & 0xff) / 255.0f;
+            constants->accent[0] = (accentColor & 0xff) / 255.0f;
+            constants->progress = progress;
+            constants->panelx = panelx;
+            constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
+            constants->playing = playing;
+            constants->a0 = amplitudes[0];
+            constants->a1 = amplitudes[1];
+            constants->a2 = amplitudes[2];
+            constants->a3 = amplitudes[3];
+            constants->a4 = amplitudes[4];
+            constants->a5 = amplitudes[5];
+            d3d11DeviceContext->Unmap(constantBuffer2, 0);
+        }
 
         FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
         d3d11DeviceContext->ClearRenderTargetView(d3d11FrameBufferView, backgroundColor);
@@ -925,10 +1057,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d3d11DeviceContext->Draw(numVerts, 0);
 
+        {
+            D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+            d3d11DeviceContext->Map(constantBuffer3, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
+            Constants3* constants = (Constants3*)(mappedSubresource.pData);
+            d3d11DeviceContext->Unmap(constantBuffer3, 0);
+
+            d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            d3d11DeviceContext->IASetInputLayout(inputLayout);
+
+            d3d11DeviceContext->PSSetShader(pixelShader3, nullptr, 0);
+
+            d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer3);
+
+            d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
+            d3d11DeviceContext->PSSetShaderResources(1, 1, &baseview);
+            d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
+
+            d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer2, &stride2, &offset2);
+
+            d3d11DeviceContext->Draw(numVerts2, 0);
+        }
+
         // Perform D2D rendering
         d2dRenderTarget->BeginDraw();
 
-        D2D1_RECT_F clipRect = D2D1::RectF(panelx+PLAYER_WIDTH/2+8, 0.0f, PLAYER_WIDTH, PLAYER_HEIGHT);
+        D2D1_RECT_F clipRect = D2D1::RectF(panelx*PLAYER_WIDTH, 0.0f, PLAYER_WIDTH, PLAYER_HEIGHT);
         
         d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
@@ -964,7 +1118,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 album_keys[i].c_str(),
                 wcslen(album_keys[i].c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
+                D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
                 textBrush
             );
 
@@ -972,7 +1126,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 albums[album_keys[i]].artist.c_str(),
                 wcslen(albums[album_keys[i]].artist.c_str()),
                 textFormat3,
-                D2D1::RectF(panelx - PLAYER_WIDTH / 2 + (40 + 35) * SCALE, albumY + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
+                D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
                 textBrush2
             );
 
@@ -981,7 +1135,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     albums[album_keys[i]].songs[j].title.c_str(),
                     wcslen(albums[album_keys[i]].songs[j].title.c_str()),
                     textFormat3,
-                    D2D1::RectF(panelx - PLAYER_WIDTH / 2 + 30 * SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT + 13, panelx + PLAYER_WIDTH/2 - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT + 13, panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
                     textBrush
                 );
             }

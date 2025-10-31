@@ -289,6 +289,11 @@ float4 ps2_main(VS_Output input) : SV_Target
         0.5450980392156862, 
         1.0
     );
+    if (input.uv.x < panelx)
+    {
+        float4 s = basemaps.Sample(mysampler, float3(input.uv.x - panelx + 1.0f, input.uv.y, 6));
+        return grey * s.r;
+    }
     float playbtnsdf = clamp(sdCircle(
         px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), pbradius + 10
     ), 0.0, 1.0);

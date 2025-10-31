@@ -3,16 +3,8 @@
 
 cbuffer constants : register(b0)
 {
-    float progress;
-    float panelx;
-    float panely;
     int pressedButton;
-    int nAlbums;
-    int albumLengths[MAX_ALBUMS];
 };
-
-Texture2DArray mytexture : register(t0);
-SamplerState mysampler : register(s0);
 
 #define imgradius ((170.0 / 2) * SCALE)
 #define expradius (imgradius + 4)
@@ -191,7 +183,54 @@ float sdBox(float2 p, float2 b)
 
 float map(float3 p)
 {
-    float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
+    if (pressedButton == NBUTTONS-1)
+    {
+        float a = opSmoothUnion(
+            sdPlane(p, float3(0, 0, 1), 0),
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 2*ALBUM_HEIGHT, 0), 30, 27, 5, 5),
+            8.0
+        );
+        a = opSmoothUnion(
+            a,
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 4 * ALBUM_HEIGHT, 0), 30, 27, 5, 5),
+            8.0
+        );
+        a = opSmoothUnion(
+            a,
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 6 * ALBUM_HEIGHT, 0), 30, 27, 5, 5),
+            8.0
+        );
+        a = opSmoothUnion(
+            a,
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 10 * ALBUM_HEIGHT, 0), 30, 27, 5, 5),
+            8.0
+        );
+        return a;
+    }
+    if (pressedButton >= 6)
+    {
+        float a = opSmoothUnion(
+            sdPlane(p, float3(0, 0, 1), 0),
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
+            8.0
+        );
+        a = opSmoothSubtraction(
+            sdVerticalCapsule(p - float3(PLAYER_WIDTH - 65 * SCALE, -20, 0), PLAYER_HEIGHT + 20, 1),
+            a,
+            1.0
+        );
+        switch (pressedButton)
+        {
+            case 7:
+                a = opSmoothSubtraction(
+                    sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+                    a,
+                    1.0
+                );
+                break;
+        }
+        return a;
+    }
     float a = opSmoothUnion(
         sdPlane(p, float3(0,0,1), 0),
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 0), pbradius, pbradius-2, 5, 5),
@@ -208,21 +247,6 @@ float map(float3 p)
         8.0
     );
     a = opSmoothUnion(
-        sdHorizontalCapsule(p - float3(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, 0), proglen, 3),
-        a,
-        1.0
-    );
-    a = opSmoothUnion(
-        sdRoundedTruncatedCone(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), 10, 9, 5, 1),
-        a,
-        4.0
-    );
-    a = opSmoothSubtraction(
-        sdHorizontalCapsule(p - float3(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE, 0), PLAYER_WIDTH - 44 * SCALE - proglen, 3),
-        a,
-        1.0
-    );
-    a = opSmoothUnion(
         a,
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
         8.0
@@ -237,35 +261,6 @@ float map(float3 p)
         sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH / 2, 164 * SCALE, 0), imgradius+10, imgradius+10 - 10, 10, 10),
         8.0
     );
-    a = opSmoothUnion(
-        a,
-        sdRoundBox(p - float3(panelx, PLAYER_HEIGHT / 2, 0), float3(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT + 8, 50), 4),
-        8.0
-    );
-    a = opSmoothUnion(
-        a,
-        sdRoundedTruncatedCone(p - float3(panelx + PLAYER_WIDTH/2 - 35 * SCALE, 35 * SCALE, 0), 15, 12, 55, 5),
-        8.0
-    );
-    float albumY = panely;
-    for (int i = 0; i < nAlbums; i++)
-    {
-        a = opSmoothUnion(
-            a,
-            sdRoundedTruncatedCone(p - float3(panelx - PLAYER_WIDTH/2 + 40 * SCALE, albumY, 0), 30, 27, 55, 5),
-            8.0
-        );
-        
-        for (int j = 0; j < albumLengths[i]; j++)
-        {
-            a = opSmoothSubtraction(
-                sdHorizontalCapsule(p - float3(panelx - PLAYER_WIDTH / 2 + 20*SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT, 50), PLAYER_WIDTH - 80 * SCALE, 1),
-                a,
-                1.0
-            );
-        }
-        albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
-    }
     switch (pressedButton)
     {
         case 1:
@@ -384,12 +379,17 @@ float4 ps_main(VS_Output input) : SV_Target
     float2 px = input.uv;
     px.x *= (float) PLAYER_WIDTH;
     px.y *= (float) PLAYER_HEIGHT;
-    float2 imgpx = (px - (imgcenter - float2(expradius, expradius))) / (2.0 * expradius);
-    float imgsdf = clamp(distance(px, imgcenter) - imgradius, 0.0, 1.0);
     float3 norm = raymarchvertical(px);
+    if (pressedButton == NBUTTONS-1)
+    {
+        float b = max(dot(norm, -lightdir), 0.0);
+        return float4(b, 0, 0, 0);
+    }
     float brightness = max(dot(norm, -lightdir), 0.0) *
         lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
         random(input.uv) * 0.025;
+    if (pressedButton >= 6)
+        return float4(brightness, 0, 0, 0);
     const float4 grey = float4(
         0.2,
         0.2235294117647059,
@@ -413,24 +413,7 @@ float4 ps_main(VS_Output input) : SV_Target
         0.984313725490196,
         1.0
     );
-    float proglen = progress * (PLAYER_WIDTH - 44 * SCALE);
-    const float4 barcolor = lerp(orange, blue, (max(px.x, 22 * SCALE) - 22 * SCALE) / proglen);
     const float4 paint = float4(0.5254901960784314, 0.5333333333333333, 0.5450980392156862, 1);
-    float barsdf = capsuleSDF(
-        px, float2(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE),
-        float2(22 * SCALE + proglen,
-        PLAYER_HEIGHT - 157 * SCALE), 3
-    );
-    barsdf = opUnion(
-        barsdf, 
-        sdCircle(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 12)
-    );
-    barsdf = opSmoothSubtraction(
-        sdRing(px - float2(22 * SCALE + proglen, PLAYER_HEIGHT - 157 * SCALE), 10, 6),
-        barsdf,
-        0.25
-    );
-    barsdf = clamp(barsdf, 0.0, 1.0);
     float playbtnsdf = clamp(sdCircle(
         px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), pbradius+10
     ), 0.0, 1.0);
@@ -495,33 +478,12 @@ float4 ps_main(VS_Output input) : SV_Target
     );
     sksymbsdf = opUnion(sksymbsdf, backsdf);
     sksymbsdf = clamp(sksymbsdf, 0.0, 1.0);
-    float4 c = lerp(mytexture.Sample(mysampler, float3(imgpx, 3)), grey, imgsdf);
-    c = lerp(c, barcolor, 1.0 - barsdf);
-    c = lerp(c, lerp(orange * 1.7, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
+    float4 c = lerp(grey, lerp(orange * 1.7, white * 1.5, 1.0 - playsdf), 1.0 - playbtnsdf);
     c = lerp(c, paint, 1.0 - xsdf);
     c = lerp(c, paint * 1.5, 1.0 - sksymbsdf);
     float skipsdf = sdCircle(px - float2(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6);
     skipsdf = opUnion(skipsdf, sdCircle(px - float2(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE), skipradius + 6));
     skipsdf = clamp(skipsdf, 0.0, 1.0);
-    float boxsdf = sdBox(px - float2(panelx, PLAYER_HEIGHT / 2), float2(PLAYER_WIDTH / 2 + 8, PLAYER_HEIGHT / 2 + 8));
-    boxsdf = clamp(boxsdf, 0.0, 1.0);
-    float4 c1 = grey;
-    float albumY = panely;
-    for (int i = 0; i < nAlbums; i++)
-    {
-        float2 center = float2(panelx - PLAYER_WIDTH / 2 + 40 * SCALE, albumY);
-        #define thumbsize 34
-        #define expthumbsize (thumbsize + 2)
-        float2 thumbpx = (px - (center - expthumbsize)) / (2 * expthumbsize);
-        float thumbsdf =
-            sdCircle(px - center, thumbsize);
-        thumbsdf = clamp(thumbsdf, 0.0, 1.0);
-        c1 = lerp(c1, mytexture.Sample(mysampler, float3(thumbpx, i)), 1.0 - thumbsdf);
-        albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albumLengths[i] + 1);
-    }
-    c1 *= brightness;
-    float4 finalcolor = lerp(brightness, brightness + 0.15, 1.0 - skipsdf) * c;
-    finalcolor = lerp(finalcolor, c1, 1.0 - boxsdf);
     brightness = lerp(brightness, brightness + 0.15, 1.0 - skipsdf);
     return float4(brightness, xsdf, sksymbsdf, playsdf);
 }
