@@ -9,6 +9,7 @@ cbuffer constants : register(b0)
     int pressedButton;
     int playing;
     float a0, a1, a2, a3, a4, a5;
+    float sely;
 };
 
 Texture2DArray albums : register(t0);
@@ -292,7 +293,10 @@ float4 ps2_main(VS_Output input) : SV_Target
     if (input.uv.x < panelx)
     {
         float4 s = basemaps.Sample(mysampler, float3(input.uv.x - panelx + 1.0f, input.uv.y, 6));
-        return grey * s.r;
+        float selbox = sdBox(input.pos.xy - float2(0.366666 * PLAYER_WIDTH, sely), float2(132, 30 * SCALE)) - 4.0;
+        selbox = clamp(selbox, 0.0, 1.0);
+        float brightness = lerp(1.0, 0.75, 1.0 - selbox);
+        return grey * s.r * brightness;
     }
     float playbtnsdf = clamp(sdCircle(
         px - float2(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE), pbradius + 10

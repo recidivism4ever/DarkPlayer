@@ -214,11 +214,11 @@ float map(float3 p)
             sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
             8.0
         );
-        a = opSmoothSubtraction(
+        /*a = opSmoothSubtraction(
             sdVerticalCapsule(p - float3(PLAYER_WIDTH - 65 * SCALE, -20, 0), PLAYER_HEIGHT + 20, 1),
             a,
             1.0
-        );
+        );*/
         switch (pressedButton)
         {
             case 7:

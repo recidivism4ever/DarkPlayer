@@ -87,6 +87,11 @@ float panely = 70.0f;
 float panelyvel = 0.0f;
 int panelticks = 0;
 int nAlbums;
+float selyvel = 0.0f;
+float prevsely = 0.0f;
+float cursely = 0.0f;
+float sely = 0.0f;
+int selAlbum = 1;
 
 enum State {
     DEFAULT,
@@ -228,6 +233,22 @@ void tick() {
     }
     panelyvel -= panelyvel * 0.2f;
     if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
+
+    float selTarget = curpanely + selAlbum * 2 * ALBUM_HEIGHT;
+    prevsely = cursely;
+    float dist = selTarget - cursely;
+    int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
+    if (dist < 0) {
+        dist = -dist;
+    }
+    if (dist > 256) {
+        //dist = 256;
+    }
+    #define HOLD_FORCE_MULTIPLIER 0.5
+    #define DAMPING 1.0
+    float holdForce = dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * selyvel;
+    selyvel += holdForce;
+    cursely += selyvel;
 }
 
 void tickloop() {
@@ -239,6 +260,8 @@ void tickloop() {
 
     panelx = prevpanelx + (curpanelx - prevpanelx) * remainingTick;
     panely = prevpanely + (curpanely - prevpanely) * remainingTick;
+
+    sely = prevsely + (cursely - prevsely) * remainingTick;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -810,10 +833,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         int pressedButton;
         int playing;
         float a0, a1, a2, a3, a4, a5;
+        float sely;
     };
     struct Constants3
     {
         float pos[2];
+        float sely;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -1005,6 +1030,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessageW(&msg);
         }
 
+        POINT cursor;
+        GetCursorPos(&cursor);
+        ScreenToClient(hwnd, &cursor);
+        if (cursor.x > 264) {
+            selAlbum = -1;
+            selyvel = 0.0f;
+            cursely = curpanely + selAlbum * 2 * ALBUM_HEIGHT;
+            prevsely = cursely;
+            sely = cursely;
+        }
+        else {
+            int newSelAlbum = ((cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT));
+            if (selAlbum == -1) {
+                selyvel = 0.0f;
+                cursely = curpanely + newSelAlbum * 2 * ALBUM_HEIGHT;
+                prevsely = cursely;
+                sely = cursely;
+            }
+            selAlbum = newSelAlbum;
+        }
+
         feedAudio();
 
         QueryPerformanceCounter(&t1);
@@ -1033,6 +1079,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             constants->a3 = amplitudes[3];
             constants->a4 = amplitudes[4];
             constants->a5 = amplitudes[5];
+            constants->sely = sely;
             d3d11DeviceContext->Unmap(constantBuffer2, 0);
         }
 
@@ -1068,6 +1115,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
             constants->pos[0] = (panelx - 0.85f) * 2.0f - 1.0f;
             constants->pos[1] = (-panely/PLAYER_HEIGHT) * 2.0f + 1.0f;
+            constants->sely = sely;
             d3d11DeviceContext->Unmap(constantBuffer3, 0);
 
             d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

@@ -24,14 +24,13 @@ HRESULT GetScaledPixelsFromStream(
     hr = pDecoder->GetFrame(0, &pFrame);
     if (FAILED(hr)) return hr;
 
-    // Convert to a common pixel format (e.g., 32bpp RGBA) for D3D
     ComPtr<IWICFormatConverter> pConverter;
     hr = pFactory->CreateFormatConverter(&pConverter);
     if (FAILED(hr)) return hr;
 
     hr = pConverter->Initialize(
         pFrame.Get(),
-        GUID_WICPixelFormat32bppPBGRA, // Pixel format compatible with D3D11
+        GUID_WICPixelFormat32bppPBGRA,
         WICBitmapDitherTypeNone,
         NULL,
         0.f,
@@ -48,11 +47,10 @@ HRESULT GetScaledPixelsFromStream(
         pConverter.Get(),
         THUMBNAIL_SIZE,
         THUMBNAIL_SIZE,
-        WICBitmapInterpolationModeFant // High-quality scaling
+        WICBitmapInterpolationModeHighQualityCubic
     );
     if (FAILED(hr)) return hr;
 
-    // Copy the scaled pixels into the buffer
     hr = pScaler->CopyPixels(NULL, THUMBNAIL_SIZE*4, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4, buffer);
 
     return hr;
@@ -64,7 +62,7 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
     IPropertyStore* pps = nullptr;
     HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
     if (FAILED(hr)) {
-        return NULL; // Return empty on failure
+        return NULL;
     }
 
     PROPVARIANT pv;
@@ -121,12 +119,11 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
     return hr;
 }
 
-// A helper to get the album title from an IShellItem
 std::wstring getAlbumTitle(IShellItem* psi) {
     IPropertyStore* pps = nullptr;
     HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
     if (FAILED(hr)) {
-        return L""; // Return empty on failure
+        return L"";
     }
 
     PROPVARIANT pv;
@@ -151,7 +148,7 @@ std::wstring getArtist(IShellItem* psi) {
     IPropertyStore* pps = nullptr;
     HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
     if (FAILED(hr)) {
-        return L""; // Return empty on failure
+        return L"";
     }
 
     PROPVARIANT pv;
@@ -210,7 +207,6 @@ UINT32 getTrackNumber(IShellItem* psi) {
     hr = pps->GetValue(PKEY_Music_TrackNumber, &pv);
     UINT32 trackNumber = 0;
     if (SUCCEEDED(hr)) {
-        // Use PropVariantToUInt32 to safely convert the PROPVARIANT
         PropVariantToUInt32(pv, &trackNumber);
         PropVariantClear(&pv);
     }
@@ -238,11 +234,9 @@ double getDurationSec(IShellItem* psi) {
     return (double)duration100ns * 100.0 / 1e9;
 }
 
-// Recursive function to find music items and their albums
 void findMusicInFolder(IShellItem* psiFolder,
     std::map<std::wstring, Album>& albums) {
     IEnumShellItems* pesi = nullptr;
-    // Get an enumerator for the items in this folder
     HRESULT hr = psiFolder->BindToHandler(NULL, BHID_EnumItems, IID_PPV_ARGS(&pesi));
     if (FAILED(hr)) {
         return;
@@ -254,11 +248,9 @@ void findMusicInFolder(IShellItem* psiFolder,
         psi->GetAttributes(SFGAO_FOLDER, &attributes);
 
         if (attributes & SFGAO_FOLDER) {
-            // It's a subfolder, recurse into it
             findMusicInFolder(psi, albums);
         }
         else {
-            // It's a file, get its album title and path
             std::wstring albumTitle = getAlbumTitle(psi);
             if (!albumTitle.empty()) {
                 PWSTR pwszPath = nullptr;

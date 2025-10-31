@@ -196,7 +196,7 @@ void feedAudio() {
         mags[i] /= max_amp;
     }
 
-    printf("step: %f m: %d\n", step, m);
+    //printf("step: %f m: %d\n", step, m);
     if (m > 10) step += 0.001;
 
     static float smooth[6];
