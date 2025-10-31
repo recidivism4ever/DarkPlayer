@@ -1066,6 +1066,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             D3D11_MAPPED_SUBRESOURCE mappedSubresource;
             d3d11DeviceContext->Map(constantBuffer3, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
+            constants->pos[0] = (panelx - 0.85f) * 2.0f - 1.0f;
+            constants->pos[1] = (-panely/PLAYER_HEIGHT) * 2.0f + 1.0f;
             d3d11DeviceContext->Unmap(constantBuffer3, 0);
 
             d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1137,7 +1139,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 textBrush2
             );
 
-            for (int j = 0; j < albums[album_keys[i]].songs.size(); j++) {
+            /*for (int j = 0; j < albums[album_keys[i]].songs.size(); j++) {
                 d2dRenderTarget->DrawText(
                     albums[album_keys[i]].songs[j].title.c_str(),
                     wcslen(albums[album_keys[i]].songs[j].title.c_str()),
@@ -1145,8 +1147,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT + 13, panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
                     textBrush
                 );
-            }
-            albumY += ALBUM_HEIGHT + SONG_HEIGHT * (albums[album_keys[i]].songs.size() + 1);
+            }*/
+            albumY += ALBUM_HEIGHT * 2;// +SONG_HEIGHT * (albums[album_keys[i]].songs.size() + 1);
         }
 
         d2dRenderTarget->EndDraw();
