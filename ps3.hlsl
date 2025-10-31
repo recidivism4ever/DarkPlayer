@@ -3,7 +3,7 @@
 
 cbuffer constants : register(b0)
 {
-    int albumId;
+    float2 pos;
 };
 
 Texture2DArray albums : register(t0);
@@ -221,7 +221,8 @@ float4 ps3_main(VS_Output input) : SV_Target
     float4 c;
     c = grey;
     float brightness = s.r;
-    //brightness = lerp(brightness, brightness + 0.25, 1.0 - playbtnsdf);
+    
+    c = lerp(c, albums.Sample(mysampler, float3(s.b, s.a, float(input.albumId))), 1.0 - s.g);
     
     return c * brightness;
 }

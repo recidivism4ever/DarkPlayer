@@ -383,7 +383,55 @@ float4 ps_main(VS_Output input) : SV_Target
     if (pressedButton == NBUTTONS-1)
     {
         float b = max(dot(norm, -lightdir), 0.0);
-        return float4(b, 0, 0, 0);
+        
+        float2 center0 = float2(PLAYER_WIDTH / 2, 2 * ALBUM_HEIGHT);
+        float2 center1 = float2(PLAYER_WIDTH / 2, 4 * ALBUM_HEIGHT);
+        float2 center2 = float2(PLAYER_WIDTH / 2, 6 * ALBUM_HEIGHT);
+        float2 center3 = float2(PLAYER_WIDTH / 2, 10 * ALBUM_HEIGHT);
+        float csdf0 = sdCircle(px - center0, thumbsize);
+        float csdf1 = sdCircle(px - center1, thumbsize);
+        float csdf2 = sdCircle(px - center2, thumbsize);
+        float csdf3 = sdCircle(px - center3, thumbsize);
+
+        float albSdf = opUnion(
+            csdf0,
+            csdf1
+        );
+        albSdf = opUnion(
+            albSdf,
+            csdf2
+        );
+        albSdf = opUnion(
+            albSdf,
+            csdf3
+        );
+        albSdf = clamp(albSdf, 0.0, 1.0);
+        
+        int minId = 0;
+        float minCsdf = csdf0;
+        float2 minCenter = float2(PLAYER_WIDTH / 2, center0.y);
+        if (csdf1 < minCsdf)
+        {
+            minId = 1;
+            minCsdf = csdf1;
+            minCenter.y = center1.y;
+        }
+        if (csdf2 < minCsdf)
+        {
+            minId = 2;
+            minCsdf = csdf2;
+            minCenter.y = center2.y;
+        }
+        if (csdf3 < minCsdf)
+        {
+            minId = 3;
+            minCsdf = csdf3;
+            minCenter.y = center3.y;
+        }
+        
+        float2 albPx = (px - (minCenter - expthumbsize)) / (2 * expthumbsize);
+        
+        return float4(b, albSdf, albPx.x, albPx.y);
     }
     float brightness = max(dot(norm, -lightdir), 0.0) *
         lerp(1.0, 0.4583, input.uv.y * input.uv.y) +

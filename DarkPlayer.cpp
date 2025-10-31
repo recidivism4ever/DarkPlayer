@@ -1,6 +1,7 @@
 #include "DarkPlayer.h"
 
 #include "vs.h"
+#include "vs2.h"
 #include "ps.h"
 #include "ps2.h"
 #include "ps3.h"
@@ -579,6 +580,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         HRESULT hResult = d3d11Device->CreateVertexShader(g_vs_main, sizeof(g_vs_main), nullptr, &vertexShader);
         assert(SUCCEEDED(hResult));
     }
+    ID3D11VertexShader* vertexShader2;
+    {
+        HRESULT hResult = d3d11Device->CreateVertexShader(g_vs2_main, sizeof(g_vs2_main), nullptr, &vertexShader2);
+        assert(SUCCEEDED(hResult));
+    }
 
     // Create Pixel Shader
     ID3D11PixelShader* pixelShader;
@@ -807,8 +813,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     };
     struct Constants3
     {
-        float center[2];
-        int albumId;
+        float pos[2];
     };
 
     ID3D11Buffer* constantBuffer;
@@ -1066,8 +1071,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             d3d11DeviceContext->IASetInputLayout(inputLayout);
 
+            d3d11DeviceContext->VSSetShader(vertexShader2, nullptr, 0);
             d3d11DeviceContext->PSSetShader(pixelShader3, nullptr, 0);
 
+            d3d11DeviceContext->VSSetConstantBuffers(0, 1, &constantBuffer3);
             d3d11DeviceContext->PSSetConstantBuffers(0, 1, &constantBuffer3);
 
             d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);

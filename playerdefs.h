@@ -9,3 +9,5 @@
 #define PANEL_RIGHT_STOP 1.0f
 #define NBUTTONS 9
 #define VISBARS 6
+#define thumbsize 34
+#define expthumbsize (thumbsize + 2)

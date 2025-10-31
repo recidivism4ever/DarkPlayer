@@ -7,5 +7,6 @@ struct VS_Input
 struct VS_Output
 {
     float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD0;
+    nointerpolation uint albumId : TEXCOORD1;
 };
