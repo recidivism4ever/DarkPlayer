@@ -4,7 +4,7 @@
 cbuffer constants : register(b0)
 {
     float2 pos;
-    float sely;
+    float2 selpos;
 };
 
 Texture2DArray albums : register(t0);
@@ -35,7 +35,7 @@ float4 ps3_main(VS_Output input) : SV_Target
     float4 s = basemaps.Sample(mysampler, float3(input.uv, NBUTTONS-1));
     float4 c = grey;
     float2 posTL = input.pos.xy * float2(1.0 / PLAYER_WIDTH, 1.0 / PLAYER_HEIGHT);
-    float selbox = sdBox(input.pos.xy - float2(0.366666 * PLAYER_WIDTH, sely), float2(132, 30 * SCALE)) - 4.0;
+    float selbox = sdBox(input.pos.xy - selpos, float2(132, 30 * SCALE)) - 4.0;
     selbox = clamp(selbox, 0.0, 1.0);
     float selb = lerp(1.0, 0.75, 1.0 - selbox);
     selb = lerp(selb, 1.0, 1.0 - s.g);

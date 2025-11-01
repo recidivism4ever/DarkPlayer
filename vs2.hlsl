@@ -3,7 +3,7 @@
 cbuffer constants : register(b0)
 {
     float2 pos;
-    float sely;
+    float2 selpos;
 };
 
 VS_Output vs2_main(VS_Input input, uint vertexId : SV_VertexID)

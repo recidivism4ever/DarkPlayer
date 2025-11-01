@@ -87,11 +87,16 @@ float panely = 70.0f;
 float panelyvel = 0.0f;
 int panelticks = 0;
 int nAlbums;
+float selxvel = 0.0f;
+float prevselx = 0.0f;
+float curselx = 0.0f;
+float selx = 0.0f;
 float selyvel = 0.0f;
 float prevsely = 0.0f;
 float cursely = 0.0f;
 float sely = 0.0f;
-int selAlbum = 1;
+int selAlbum = 0;
+bool selActive = false;
 
 enum State {
     DEFAULT,
@@ -234,20 +239,24 @@ void tick() {
     panelyvel -= panelyvel * 0.2f;
     if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
 
-    float selTarget = curpanely + selAlbum * 2 * ALBUM_HEIGHT;
+    prevselx = curselx;
     prevsely = cursely;
-    float dist = selTarget - cursely;
-    int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
-    if (dist < 0) {
-        dist = -dist;
-    }
-    if (dist > 256) {
-        //dist = 256;
-    }
-    #define HOLD_FORCE_MULTIPLIER 0.5
+    float target[2] = { selActive ? 132.0f : -140.0f, curpanely + selAlbum * 2 * ALBUM_HEIGHT };
+    float dist[2] = { target[0] - curselx, target[1] - cursely };
+    int dir[2] = { dist[0] < 0 ? -1 : dist[0] == 0 ? 0 : 1, dist[1] < 0 ? -1 : dist[1] == 0 ? 0 : 1 };
+    if (dist[0] < 0) dist[0] = -dist[0];
+    if (dist[1] < 0) dist[1] = -dist[1];
+    if (dist[0] > 256) {}
+    if (dist[1] > 256) {}
+    #define HOLD_FORCE_MULTIPLIER 0.4
     #define DAMPING 1.0
-    float holdForce = dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * selyvel;
-    selyvel += holdForce;
+    float holdForce[2] = { 
+        dist[0] * HOLD_FORCE_MULTIPLIER*2.0f * dir[0] - DAMPING * selxvel, 
+        dist[1] * HOLD_FORCE_MULTIPLIER * dir[1] - DAMPING * selyvel 
+    };
+    selxvel += holdForce[0];
+    selyvel += holdForce[1];
+    curselx += selxvel;
     cursely += selyvel;
 }
 
@@ -261,6 +270,7 @@ void tickloop() {
     panelx = prevpanelx + (curpanelx - prevpanelx) * remainingTick;
     panely = prevpanely + (curpanely - prevpanely) * remainingTick;
 
+    selx = prevselx + (curselx - prevselx) * remainingTick;
     sely = prevsely + (cursely - prevsely) * remainingTick;
 }
 
@@ -446,7 +456,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     nAlbums = album_keys.size();
 
-    loadSong(albums[album_keys[6]].songs[8].path);
+    loadSong(albums[album_keys[6]].songs[17].path);
 
     play();
     
@@ -833,12 +843,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         int pressedButton;
         int playing;
         float a0, a1, a2, a3, a4, a5;
-        float sely;
+        float selpos[2];
     };
     struct Constants3
     {
         float pos[2];
-        float sely;
+        float selpos[2];
     };
 
     ID3D11Buffer* constantBuffer;
@@ -1033,22 +1043,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         POINT cursor;
         GetCursorPos(&cursor);
         ScreenToClient(hwnd, &cursor);
-        if (cursor.x > 264) {
-            selAlbum = -1;
-            selyvel = 0.0f;
-            cursely = curpanely + selAlbum * 2 * ALBUM_HEIGHT;
-            prevsely = cursely;
-            sely = cursely;
+        selAlbum = ((cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT));
+        if (cursor.x > 268 || cursor.x < 0 || selAlbum < 0 || selAlbum >= nAlbums) {
+            selActive = false;
         }
-        else {
-            int newSelAlbum = ((cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT));
-            if (selAlbum == -1) {
-                selyvel = 0.0f;
-                cursely = curpanely + newSelAlbum * 2 * ALBUM_HEIGHT;
-                prevsely = cursely;
-                sely = cursely;
-            }
-            selAlbum = newSelAlbum;
+        else if (panelx == 1.0f){
+            selActive = true;
         }
 
         feedAudio();
@@ -1079,7 +1079,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             constants->a3 = amplitudes[3];
             constants->a4 = amplitudes[4];
             constants->a5 = amplitudes[5];
-            constants->sely = sely;
+            constants->selpos[0] = selx;
+            constants->selpos[1] = sely;
             d3d11DeviceContext->Unmap(constantBuffer2, 0);
         }
 
@@ -1115,7 +1116,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
             constants->pos[0] = (panelx - 0.85f) * 2.0f - 1.0f;
             constants->pos[1] = (-panely/PLAYER_HEIGHT) * 2.0f + 1.0f;
-            constants->sely = sely;
+            constants->selpos[0] = selx;
+            constants->selpos[1] = sely;
             d3d11DeviceContext->Unmap(constantBuffer3, 0);
 
             d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
