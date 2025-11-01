@@ -1047,12 +1047,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         GetCursorPos(&cursor);
         ScreenToClient(hwnd, &cursor);
         selAlbum = ((cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT));
-        if (cursor.x > 268 || cursor.x < 0 || selAlbum < 0 || selAlbum >= nAlbums) {
-            selActive = false;
-        }
-        else if (panelx == 1.0f){
-            selActive = true;
-        }
+        selActive = 
+            (panelx == 1.0f) 
+            && (cursor.y >= 0) 
+            && (cursor.y < PLAYER_HEIGHT) 
+            && (cursor.x >= 0) 
+            && (cursor.x <= 268) 
+            && (selAlbum >= 0) 
+            && (selAlbum < nAlbums);
 
         feedAudio();
 
