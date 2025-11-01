@@ -85,6 +85,7 @@ float prevpanely = 70.0f;
 float curpanely = 70.0f;
 float panely = 70.0f;
 float panelyvel = 0.0f;
+int panelyoverride = 0;
 int panelticks = 0;
 int nAlbums;
 float selxvel = 0.0f;
@@ -231,13 +232,21 @@ void tick() {
         }
     }
     prevpanely = curpanely;
-    curpanely += panelyvel;
-    if (curpanely > 70.0f) {
-        curpanely = 70.0f;
-        panelyvel = 0.0f;
+    float low = 70.0f - (nAlbums-6) * 2 * ALBUM_HEIGHT;
+#define OVERRIDE_EPSILON 5.0f
+    if ((curpanely > 70.0f && !(panelyoverride < 0 && panelyvel <= -OVERRIDE_EPSILON)) || 
+        (curpanely < low && !(panelyoverride > 0 && panelyvel >= OVERRIDE_EPSILON))) {
+        float dist = (curpanely > 70.0f ? 70.0f : low) - curpanely;
+        int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
+        if (dist < 0) dist = -dist;
+        if (dist > 256) {}
+#define HOLD_FORCE_MULTIPLIER 0.2
+#define DAMPING 0.5
+        panelyvel += dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * panelyvel;
     }
     panelyvel -= panelyvel * 0.2f;
     if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
+    curpanely += panelyvel;
 
     prevselx = curselx;
     prevsely = cursely;
@@ -250,12 +259,8 @@ void tick() {
     if (dist[1] > 256) {}
     #define HOLD_FORCE_MULTIPLIER 0.4
     #define DAMPING 1.0
-    float holdForce[2] = { 
-        dist[0] * HOLD_FORCE_MULTIPLIER*2.0f * dir[0] - DAMPING * selxvel, 
-        dist[1] * HOLD_FORCE_MULTIPLIER * dir[1] - DAMPING * selyvel 
-    };
-    selxvel += holdForce[0];
-    selyvel += holdForce[1];
+    selxvel += dist[0] * HOLD_FORCE_MULTIPLIER * 2.0f * dir[0] - DAMPING * selxvel;
+    selyvel += dist[1] * HOLD_FORCE_MULTIPLIER * dir[1] - DAMPING * selyvel;
     curselx += selxvel;
     cursely += selyvel;
 }
@@ -347,13 +352,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
         if (zDelta > 0)
         {
-            // Mouse wheel scrolled up
-            // Implement your upward scrolling logic here
+            panelyoverride = 1;
         }
         else if (zDelta < 0)
         {
-            // Mouse wheel scrolled down
-            // Implement your downward scrolling logic here
+            panelyoverride = -1;
         }
         break;
     }
