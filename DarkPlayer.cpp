@@ -152,6 +152,7 @@ bool button(float x, float y, float radius) {
         case ACTION_MOVE:
             break;
         case ACTION_LDOWN:
+            printf("btnid: %d\n", btnid);
             ldownid = btnid;
             break;
         case ACTION_LUP:

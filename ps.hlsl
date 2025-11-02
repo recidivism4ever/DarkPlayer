@@ -437,7 +437,33 @@ float4 ps_main(VS_Output input) : SV_Target
         lerp(1.0, 0.4583, input.uv.y * input.uv.y) +
         random(input.uv) * 0.025;
     if (pressedButton >= 6)
-        return float4(brightness, 0, 0, 0);
+    {
+        #define xlen 5.0
+        float arrowsdf = opUnion(
+            capsuleSDF(
+                px,
+                float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE),
+                float2(PLAYER_WIDTH - 35 * SCALE + xlen, 35 * SCALE),
+                1
+            ),
+            capsuleSDF(
+                px,
+                float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE),
+                float2(PLAYER_WIDTH - 35 * SCALE + xlen * 0.125, 35 * SCALE - xlen),
+                1
+            )
+        );
+        arrowsdf = opUnion(
+            arrowsdf,
+            capsuleSDF(
+                px,
+                float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE),
+                float2(PLAYER_WIDTH - 35 * SCALE + xlen * 0.125, 35 * SCALE + xlen),
+                1
+            )
+        );
+        return float4(brightness, arrowsdf, 0, 0);
+    }
     const float4 grey = float4(
         0.2,
         0.2235294117647059,
