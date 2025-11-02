@@ -701,7 +701,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float* vd = (float*)malloc(vsize);
         float y = 0.0f;
         for (int i = 0; i < nAlbums; i++) {
-            float cy = i == 0 ? ALBHT : i == nAlbums - 1 ? ALBHM : ALBHB;
+            float cy = i == 0 ? ALBHT : i == nAlbums - 1 ? ALBHB : ALBHM;
 
             vd[i * 24 + 0] = -ALBW2;
             vd[i * 24 + 1] = y + ALBH2;
