@@ -214,6 +214,11 @@ float map(float3 p)
             sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
             8.0
         );
+        a = opSmoothUnion(
+            a,
+            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 0), 15, 12, 5, 5),
+            8.0
+        );
         /*a = opSmoothSubtraction(
             sdVerticalCapsule(p - float3(PLAYER_WIDTH - 65 * SCALE, -20, 0), PLAYER_HEIGHT + 20, 1),
             a,
@@ -224,6 +229,13 @@ float map(float3 p)
             case 7:
                 a = opSmoothSubtraction(
                     sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
+                    a,
+                    1.0
+                );
+                break;
+            case 8:
+                a = opSmoothSubtraction(
+                    sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 5 + 15 * 2), 15 * 2),
                     a,
                     1.0
                 );
@@ -439,7 +451,7 @@ float4 ps_main(VS_Output input) : SV_Target
     if (pressedButton >= 6)
     {
         #define xlen 5.0
-        float arrowsdf = opUnion(
+        float sdf = opUnion(
             capsuleSDF(
                 px,
                 float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE),
@@ -453,8 +465,8 @@ float4 ps_main(VS_Output input) : SV_Target
                 1
             )
         );
-        arrowsdf = opUnion(
-            arrowsdf,
+        sdf = opUnion(
+            sdf,
             capsuleSDF(
                 px,
                 float2(PLAYER_WIDTH - 35 * SCALE - xlen, 35 * SCALE),
@@ -462,7 +474,15 @@ float4 ps_main(VS_Output input) : SV_Target
                 1
             )
         );
-        return float4(brightness, arrowsdf, 0, 0);
+        sdf = opUnion(
+            sdf,
+            sdCircle(px - float2(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE), 6.0)
+        );
+        sdf = opSubtraction(
+            sdCircle(px - float2(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE), 4.0),
+            sdf
+        );
+        return float4(brightness, sdf, 0, 0);
     }
     const float4 grey = float4(
         0.2,

@@ -243,6 +243,15 @@ void doButtons(LPARAM lparam, int action) {
             printf("panel in\n");
             state = PANEL_SWING_IN;
         }
+        if (button(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 15 + 6)) {
+            printf("swap album / song view\n");
+            if (albumState == ALBUM_OUT) {
+                albumState = ALBUM_SWING_IN;
+            }
+            else if (songState == SONG_OUT) {
+                songState = SONG_SWING_IN;
+            }
+        }
     }
 }
 
@@ -278,7 +287,7 @@ void tick() {
 
     if (albumState != ALBUM_IN) {
         prevpanely = curpanely;
-        float low = 70.0f - (nAlbums - 6) * 2 * ALBUM_HEIGHT;
+        float low = 70.0f - std::max(0, nAlbums - 6) * 2 * ALBUM_HEIGHT;
 #define OVERRIDE_EPSILON 5.0f
         if ((curpanely > 70.0f && !(scrolloverride < 0 && panelyvel <= -OVERRIDE_EPSILON)) ||
             (curpanely < low && !(scrolloverride > 0 && panelyvel >= OVERRIDE_EPSILON))) {
@@ -296,7 +305,7 @@ void tick() {
     }
     else if (songState != SONG_IN) {
         prevsongy = cursongy;
-        float low = SONGY_TOP - (albums[album_keys[activeAlbum]].songs.size() - 16) * SONG_HEIGHT;
+        float low = SONGY_TOP - std::max(0, (int)albums[album_keys[activeAlbum]].songs.size() - 16) * SONG_HEIGHT;
         if ((cursongy > SONGY_TOP && !(scrolloverride < 0 && songyvel <= -OVERRIDE_EPSILON)) ||
             (cursongy < low && !(scrolloverride > 0 && songyvel >= OVERRIDE_EPSILON))) {
             float dist = (cursongy > SONGY_TOP ? SONGY_TOP : low) - cursongy;
