@@ -1185,14 +1185,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         ScreenToClient(hwnd, &cursor);
         selAlbum = (cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT);
         selSong = (cursor.y - cursongy + SONG_HEIGHT * 0.5f) / SONG_HEIGHT;
-        selActive =
-            (panelx == 1.0f)
-            && (cursor.y >= 0)
-            && (cursor.y < PLAYER_HEIGHT)
-            && (cursor.x >= 0)
-            && (cursor.x <= 268)
-            && ((albumState != ALBUM_IN && albumState != ALBUM_SWING_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
-            || (songState != SONG_IN && songState != SONG_SWING_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size()));
+        if (!(albumState == ALBUM_SWING_IN || songState == SONG_SWING_IN)) {
+            selActive =
+                albumState != ALBUM_SWING_OUT && songState != SONG_SWING_OUT
+                && (panelx == 1.0f)
+                && (cursor.y >= 0)
+                && (cursor.y < PLAYER_HEIGHT)
+                && (cursor.x >= 0)
+                && (cursor.x <= 268)
+                && ((albumState == ALBUM_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
+                    || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size())
+                    );
+        }
 
         feedAudio();
 
