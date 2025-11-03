@@ -66,6 +66,9 @@ void getAccent(void) {
     }
 }
 
+std::map<std::wstring, Album> albums;
+std::vector<std::wstring> album_keys;
+
 int prevmousex, prevmousey, mousex, mousey;
 int btnid, hoveredid, ldownid = -1;
 int actiontype;
@@ -85,7 +88,7 @@ float prevpanely = 70.0f;
 float curpanely = 70.0f;
 float panely = 70.0f;
 float panelyvel = 0.0f;
-int panelyoverride = 0;
+int scrolloverride = 0;
 int panelticks = 0;
 int nAlbums;
 float selxvel = 0.0f;
@@ -97,7 +100,22 @@ float prevsely = 0.0f;
 float cursely = 0.0f;
 float sely = 0.0f;
 int selAlbum = 0;
+int activeAlbum = -1;
 bool selActive = false;
+#define ALBUM_SWINGOUT_TICKS 7
+float prevalbumx = ALBUM_RIGHT_STOP;
+float curalbumx = ALBUM_RIGHT_STOP;
+float albumx = ALBUM_RIGHT_STOP;
+int albumticks = ALBUM_SWINGOUT_TICKS;
+float prevsongx = ALBUM_LEFT_STOP;
+float cursongx = ALBUM_LEFT_STOP;
+float songx = ALBUM_LEFT_STOP;
+int songticks = 0;
+#define SONGY_TOP 45.0f
+float prevsongy = SONGY_TOP;
+float cursongy = SONGY_TOP;
+float songy = SONGY_TOP;
+float songyvel = 0.0f;
 
 enum State {
     DEFAULT,
@@ -106,9 +124,27 @@ enum State {
     PANEL
 };
 
+enum AlbumState {
+    ALBUM_IN,
+    ALBUM_SWING_OUT,
+    ALBUM_SWING_IN,
+    ALBUM_OUT
+};
+
+enum SongState {
+    SONG_IN,
+    SONG_SWING_OUT,
+    SONG_SWING_IN,
+    SONG_OUT
+};
+
 enum State state = DEFAULT;
 
-float dist(float ax, float ay, float bx, float by) {
+enum AlbumState albumState = ALBUM_OUT;
+
+enum SongState songState = SONG_IN;
+
+float distance2d(float ax, float ay, float bx, float by) {
     float abx = bx - ax;
     float aby = by - ay;
     return sqrtf(abx * abx + aby * aby);
@@ -116,7 +152,7 @@ float dist(float ax, float ay, float bx, float by) {
 
 float lineSegDistToPoint(float ax, float ay, float bx, float by, float cx, float cy) {
     if (ax == bx && ay == by) {
-        return dist(ax, ay, cx, cy);
+        return distance2d(ax, ay, cx, cy);
     }
 
     float acx = cx - ax;
@@ -136,13 +172,13 @@ float lineSegDistToPoint(float ax, float ay, float bx, float by, float cx, float
     float p = fabsf(abx) > fabsf(aby) ? adx / abx : ady / aby;
 
     if (p <= 0.0) {
-        return dist(cx, cy, ax, ay);
+        return distance2d(cx, cy, ax, ay);
     }
     else if (p >= 1.0) {
-        return dist(cx, cy, bx, by);
+        return distance2d(cx, cy, bx, by);
     }
 
-    return dist(cx, cy, dx, dy);
+    return distance2d(cx, cy, dx, dy);
 }
 
 bool button(float x, float y, float radius) {
@@ -173,6 +209,13 @@ void doButtons(LPARAM lparam, int action) {
 
     btnid = 0;
     hoveredid = -1;
+
+    if (actiontype == ACTION_LDOWN && selAlbum >= 0 && selActive) {
+        printf("album %d selected\n", selAlbum);
+        activeAlbum = selAlbum;
+        albumState = ALBUM_SWING_IN;
+        return;
+    }
 
     if (state == DEFAULT) {
         if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
@@ -232,22 +275,76 @@ void tick() {
             state = DEFAULT;
         }
     }
-    prevpanely = curpanely;
-    float low = 70.0f - (nAlbums-6) * 2 * ALBUM_HEIGHT;
+
+    if (albumState != ALBUM_IN) {
+        prevpanely = curpanely;
+        float low = 70.0f - (nAlbums - 6) * 2 * ALBUM_HEIGHT;
 #define OVERRIDE_EPSILON 5.0f
-    if ((curpanely > 70.0f && !(panelyoverride < 0 && panelyvel <= -OVERRIDE_EPSILON)) || 
-        (curpanely < low && !(panelyoverride > 0 && panelyvel >= OVERRIDE_EPSILON))) {
-        float dist = (curpanely > 70.0f ? 70.0f : low) - curpanely;
-        int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
-        if (dist < 0) dist = -dist;
-        if (dist > 256) {}
+        if ((curpanely > 70.0f && !(scrolloverride < 0 && panelyvel <= -OVERRIDE_EPSILON)) ||
+            (curpanely < low && !(scrolloverride > 0 && panelyvel >= OVERRIDE_EPSILON))) {
+            float dist = (curpanely > 70.0f ? 70.0f : low) - curpanely;
+            int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
+            if (dist < 0) dist = -dist;
+            if (dist > 256) {}
 #define HOLD_FORCE_MULTIPLIER 0.2
 #define DAMPING 0.5
-        panelyvel += dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * panelyvel;
+            panelyvel += dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * panelyvel;
+        }
+        panelyvel -= panelyvel * 0.2f;
+        if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
+        curpanely += panelyvel;
     }
-    panelyvel -= panelyvel * 0.2f;
-    if (fabsf(panelyvel) <= 1.0f) panelyvel = 0.0f;
-    curpanely += panelyvel;
+    else if (songState != SONG_IN) {
+        prevsongy = cursongy;
+        float low = SONGY_TOP - (albums[album_keys[activeAlbum]].songs.size() - 16) * SONG_HEIGHT;
+        if ((cursongy > SONGY_TOP && !(scrolloverride < 0 && songyvel <= -OVERRIDE_EPSILON)) ||
+            (cursongy < low && !(scrolloverride > 0 && songyvel >= OVERRIDE_EPSILON))) {
+            float dist = (cursongy > SONGY_TOP ? SONGY_TOP : low) - cursongy;
+            int dir = dist < 0 ? -1 : dist == 0 ? 0 : 1;
+            if (dist < 0) dist = -dist;
+            if (dist > 256) {}
+#define HOLD_FORCE_MULTIPLIER 0.2
+#define DAMPING 0.5
+            songyvel += dist * HOLD_FORCE_MULTIPLIER * dir - DAMPING * songyvel;
+        }
+        songyvel -= songyvel * 0.2f;
+        if (fabsf(songyvel) <= 1.0f) songyvel = 0.0f;
+        cursongy += songyvel;
+    }
+
+    prevalbumx = curalbumx;
+    if (albumState == ALBUM_SWING_OUT) {
+        albumticks++;
+        curalbumx = ALBUM_LEFT_STOP + (ALBUM_RIGHT_STOP - ALBUM_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)albumticks / ALBUM_SWINGOUT_TICKS));
+        if (albumticks == ALBUM_SWINGOUT_TICKS) {
+            albumState = ALBUM_OUT;
+        }
+    }
+    else if (albumState == ALBUM_SWING_IN) {
+        albumticks--;
+        curalbumx = ALBUM_LEFT_STOP + (ALBUM_RIGHT_STOP - ALBUM_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)albumticks / ALBUM_SWINGOUT_TICKS));
+        if (albumticks == 0) {
+            albumState = ALBUM_IN;
+            songState = SONG_SWING_OUT;
+        }
+    }
+
+    prevsongx = cursongx;
+    if (songState == SONG_SWING_OUT) {
+        songticks++;
+        cursongx = ALBUM_LEFT_STOP + (ALBUM_RIGHT_STOP - ALBUM_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)songticks / ALBUM_SWINGOUT_TICKS));
+        if (songticks == ALBUM_SWINGOUT_TICKS) {
+            songState = SONG_OUT;
+        }
+    }
+    else if (songState == SONG_SWING_IN) {
+        songticks--;
+        cursongx = ALBUM_LEFT_STOP + (ALBUM_RIGHT_STOP - ALBUM_LEFT_STOP) * smootherstep(0.0f, 1.0f, ((float)songticks / ALBUM_SWINGOUT_TICKS));
+        if (songticks == 0) {
+            songState = SONG_IN;
+            albumState = ALBUM_SWING_OUT;
+        }
+    }
 
     prevselx = curselx;
     prevsely = cursely;
@@ -275,6 +372,11 @@ void tickloop() {
 
     panelx = prevpanelx + (curpanelx - prevpanelx) * remainingTick;
     panely = prevpanely + (curpanely - prevpanely) * remainingTick;
+
+    albumx = prevalbumx + (curalbumx - prevalbumx) * remainingTick;
+
+    songx = prevsongx + (cursongx - prevsongx) * remainingTick;
+    songy = prevsongy + (cursongy - prevsongy) * remainingTick;
 
     selx = prevselx + (curselx - prevselx) * remainingTick;
     sely = prevsely + (cursely - prevsely) * remainingTick;
@@ -349,15 +451,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_MOUSEWHEEL:
     {
         short zDelta = GET_WHEEL_DELTA_WPARAM(wparam);
-        panelyvel += 0.1f * zDelta;
+        float scroll = 0.1f * zDelta;
+        if (albumState != ALBUM_IN) {
+            panelyvel += scroll;
+        }
+        else if (songState != SONG_IN) {
+            songyvel += scroll;
+        }
 
         if (zDelta > 0)
         {
-            panelyoverride = 1;
+            scrolloverride = 1;
         }
         else if (zDelta < 0)
         {
-            panelyoverride = -1;
+            scrolloverride = -1;
         }
         break;
     }
@@ -453,8 +561,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     getAccent();
 
-    std::map<std::wstring, Album> albums = iterateAlbums();
-    std::vector<std::wstring> album_keys;
+    albums = iterateAlbums();
     for (const auto& pair : albums) {
         album_keys.push_back(pair.first);
     }
@@ -1085,7 +1192,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             constants->a3 = amplitudes[3];
             constants->a4 = amplitudes[4];
             constants->a5 = amplitudes[5];
-            constants->selpos[0] = selx;
+            constants->selpos[0] = albumx * 268.0f + selx;
             constants->selpos[1] = sely;
             d3d11DeviceContext->Unmap(constantBuffer2, 0);
         }
@@ -1120,9 +1227,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             D3D11_MAPPED_SUBRESOURCE mappedSubresource;
             d3d11DeviceContext->Map(constantBuffer3, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
-            constants->pos[0] = (panelx - 0.85f) * 2.0f - 1.0f;
+            constants->pos[0] = ((albumx * 268.0f / PLAYER_WIDTH) + panelx - 0.85f) * 2.0f - 1.0f;
             constants->pos[1] = (-panely/PLAYER_HEIGHT) * 2.0f + 1.0f;
-            constants->selpos[0] = selx;
+            constants->selpos[0] = albumx * 268.0f + selx;
             constants->selpos[1] = sely;
             d3d11DeviceContext->Unmap(constantBuffer3, 0);
 
@@ -1176,35 +1283,39 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d2dRenderTarget->PopAxisAlignedClip();
 
-        float albumY = panely;
-        for (int i = 0; i < nAlbums; i++)
-        {
-            d2dRenderTarget->DrawText(
-                album_keys[i].c_str(),
-                wcslen(album_keys[i].c_str()),
-                textFormat3,
-                D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH*2, PLAYER_HEIGHT*2),
-                textBrush
-            );
-
-            d2dRenderTarget->DrawText(
-                albums[album_keys[i]].artist.c_str(),
-                wcslen(albums[album_keys[i]].artist.c_str()),
-                textFormat3,
-                D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
-                textBrush2
-            );
-
-            /*for (int j = 0; j < albums[album_keys[i]].songs.size(); j++) {
+        if (albumState != ALBUM_IN) {
+            float albumY = panely;
+            for (int i = 0; i < nAlbums; i++)
+            {
                 d2dRenderTarget->DrawText(
-                    albums[album_keys[i]].songs[j].title.c_str(),
-                    wcslen(albums[album_keys[i]].songs[j].title.c_str()),
+                    album_keys[i].c_str(),
+                    wcslen(album_keys[i].c_str()),
                     textFormat3,
-                    D2D1::RectF((panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, albumY + ALBUM_HEIGHT + j * SONG_HEIGHT + 13, panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    D2D1::RectF(albumx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
                     textBrush
                 );
-            }*/
-            albumY += ALBUM_HEIGHT * 2;// +SONG_HEIGHT * (albums[album_keys[i]].songs.size() + 1);
+
+                d2dRenderTarget->DrawText(
+                    albums[album_keys[i]].artist.c_str(),
+                    wcslen(albums[album_keys[i]].artist.c_str()),
+                    textFormat3,
+                    D2D1::RectF(albumx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY + 2 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
+                    textBrush2
+                );
+
+                albumY += ALBUM_HEIGHT * 2;
+            }
+        }
+        else {
+            for (int j = 0; j < albums[album_keys[activeAlbum]].songs.size(); j++) {
+                d2dRenderTarget->DrawText(
+                    albums[album_keys[activeAlbum]].songs[j].title.c_str(),
+                    wcslen(albums[album_keys[activeAlbum]].songs[j].title.c_str()),
+                    textFormat3,
+                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + j * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    textBrush
+                );
+            }
         }
 
         d2dRenderTarget->EndDraw();

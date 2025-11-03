@@ -7,6 +7,8 @@
 #define SONG_HEIGHT (30*SCALE)
 #define PANEL_LEFT_STOP 0.0f
 #define PANEL_RIGHT_STOP 1.0f
+#define ALBUM_LEFT_STOP -1.0f
+#define ALBUM_RIGHT_STOP 0.0f
 #define NBUTTONS 9
 #define VISBARS 6
 #define thumbsize 34
