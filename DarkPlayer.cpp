@@ -224,9 +224,7 @@ void doButtons(LPARAM lparam, int action) {
             printf("song %d selected\n", selSong);
             activeSong = selSong;
             playingAlbum = activeAlbum;
-            pause();
             loadSong(albums[album_keys[activeAlbum]].songs[activeSong].path);
-            play();
         }
     }
 
@@ -590,8 +588,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     nAlbums = album_keys.size();
 
     loadSong(albums[album_keys[6]].songs[17].path);
-
-    play();
     
     // Open a window
     HWND hwnd;

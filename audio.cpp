@@ -129,11 +129,11 @@ void feedAudio() {
 
     XAUDIO2_VOICE_STATE state;
     pSourceVoice->GetState(&state);
-    playhead = (playhead + (state.SamplesPlayed - lastSP)) % (3 * BUFSZ);
-    lastSP = state.SamplesPlayed;
-
-    elapsedSec = (state.SamplesPlayed / 44100.0);
+    UINT64 dif = state.SamplesPlayed - lastSP;
+    playhead = (playhead + dif) % (3 * BUFSZ);
+    elapsedSec += dif / 44100.0;
     progress = elapsedSec / currentSongDuration;
+    lastSP = state.SamplesPlayed;
 
     static bool hannInitialized = false;
     static float hann[N_SAMPLES];
@@ -284,10 +284,14 @@ HRESULT loadSong(std::wstring input_file) {
 
     currentSongDuration = getMediaDurationSec(input_file.c_str());
 
+    pause();
     pSourceVoice->FlushSourceBuffers();
     curbuf = 0;
     playhead = 0;
     samples.clear();
+    elapsedSec = 0.0;
+    progress = 0.0f;
+    play();
 
     return hr;
 }
