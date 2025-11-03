@@ -212,11 +212,20 @@ void doButtons(LPARAM lparam, int action) {
     btnid = 0;
     hoveredid = -1;
 
-    if (actiontype == ACTION_LDOWN && selAlbum >= 0 && selActive) {
-        printf("album %d selected\n", selAlbum);
-        activeAlbum = selAlbum;
-        albumState = ALBUM_SWING_IN;
-        return;
+    if (actiontype == ACTION_LDOWN){
+        if (albumState == ALBUM_OUT && selAlbum >= 0 && selActive) {
+            printf("album %d selected\n", selAlbum);
+            activeAlbum = selAlbum;
+            albumState = ALBUM_SWING_IN;
+            return;
+        }
+        else if (songState == SONG_OUT && selSong >= 0 && selActive) {
+            printf("song %d selected\n", selSong);
+            activeSong = selSong;
+            pause();
+            loadSong(albums[album_keys[activeAlbum]].songs[activeSong].path);
+            play();
+        }
     }
 
     if (state == DEFAULT) {

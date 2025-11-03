@@ -65,13 +65,13 @@ int BinSrch(int freq)
     return i;
 }
 
+static int curbuf = 0;
+static UINT64 lastSP = 0;
+static int playhead = 0;
+static std::vector<float> samples;
 void feedAudio() {
 #define BUFSZ 44100
-    static int curbuf = 0;
     static float buf[BUFSZ * 2 * 3];
-    static std::vector<float> samples;
-    static int lastSP = 0;
-    static int playhead = 0;
     while (1) {
         XAUDIO2_VOICE_STATE state;
         pSourceVoice->GetState(&state, XAUDIO2_VOICE_NOSAMPLESPLAYED);
@@ -129,7 +129,7 @@ void feedAudio() {
 
     XAUDIO2_VOICE_STATE state;
     pSourceVoice->GetState(&state);
-    playhead = (playhead + state.SamplesPlayed - lastSP) % (3 * BUFSZ);
+    playhead = (playhead + (state.SamplesPlayed - lastSP)) % (3 * BUFSZ);
     lastSP = state.SamplesPlayed;
 
     elapsedSec = (state.SamplesPlayed / 44100.0);
@@ -283,6 +283,11 @@ HRESULT loadSong(std::wstring input_file) {
     SafeRelease(&pOutputMediaType);
 
     currentSongDuration = getMediaDurationSec(input_file.c_str());
+
+    pSourceVoice->FlushSourceBuffers();
+    curbuf = 0;
+    playhead = 0;
+    samples.clear();
 
     return hr;
 }
