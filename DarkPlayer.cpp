@@ -101,6 +101,8 @@ float cursely = 0.0f;
 float sely = 0.0f;
 int selAlbum = 0;
 int activeAlbum = -1;
+int selSong = 0;
+int activeSong = -1;
 bool selActive = false;
 #define ALBUM_SWINGOUT_TICKS 7
 float prevalbumx = ALBUM_RIGHT_STOP;
@@ -357,7 +359,7 @@ void tick() {
 
     prevselx = curselx;
     prevsely = cursely;
-    float target[2] = { selActive ? 132.0f : -140.0f, curpanely + selAlbum * 2 * ALBUM_HEIGHT };
+    float target[2] = { selActive ? 132.0f : -140.0f, albumState == ALBUM_IN ? cursongy + selSong * SONG_HEIGHT : curpanely + selAlbum * 2 * ALBUM_HEIGHT };
     float dist[2] = { target[0] - curselx, target[1] - cursely };
     int dir[2] = { dist[0] < 0 ? -1 : dist[0] == 0 ? 0 : 1, dist[1] < 0 ? -1 : dist[1] == 0 ? 0 : 1 };
     if (dist[0] < 0) dist[0] = -dist[0];
@@ -964,11 +966,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         int playing;
         float a0, a1, a2, a3, a4, a5;
         float selpos[2];
+        float selheight;
     };
     struct Constants3
     {
         float pos[2];
         float selpos[2];
+        float selheight;
     };
 
     ID3D11Buffer* constantBuffer;
@@ -1163,15 +1167,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         POINT cursor;
         GetCursorPos(&cursor);
         ScreenToClient(hwnd, &cursor);
-        selAlbum = ((cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT));
-        selActive = 
-            (panelx == 1.0f) 
-            && (cursor.y >= 0) 
-            && (cursor.y < PLAYER_HEIGHT) 
-            && (cursor.x >= 0) 
-            && (cursor.x <= 268) 
-            && (selAlbum >= 0) 
-            && (selAlbum < nAlbums);
+        selAlbum = (cursor.y - curpanely + ALBUM_HEIGHT) / (2 * ALBUM_HEIGHT);
+        selSong = (cursor.y - cursongy + SONG_HEIGHT * 0.5f) / SONG_HEIGHT;
+        selActive =
+            (panelx == 1.0f)
+            && (cursor.y >= 0)
+            && (cursor.y < PLAYER_HEIGHT)
+            && (cursor.x >= 0)
+            && (cursor.x <= 268)
+            && ((albumState == ALBUM_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
+            || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size()));
 
         feedAudio();
 
@@ -1201,8 +1206,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             constants->a3 = amplitudes[3];
             constants->a4 = amplitudes[4];
             constants->a5 = amplitudes[5];
-            constants->selpos[0] = albumx * 268.0f + selx;
+            constants->selpos[0] = (albumState == ALBUM_IN ? songx : albumx) * 268.0f + selx;
             constants->selpos[1] = sely;
+            constants->selheight = albumState == ALBUM_IN ? 10.0f * SCALE : 30.0f * SCALE;
             d3d11DeviceContext->Unmap(constantBuffer2, 0);
         }
 
@@ -1238,8 +1244,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
             constants->pos[0] = ((albumx * 268.0f / PLAYER_WIDTH) + panelx - 0.85f) * 2.0f - 1.0f;
             constants->pos[1] = (-panely/PLAYER_HEIGHT) * 2.0f + 1.0f;
-            constants->selpos[0] = albumx * 268.0f + selx;
+            constants->selpos[0] = (albumState == ALBUM_IN ? songx : albumx) * 268.0f + selx;
             constants->selpos[1] = sely;
+            constants->selheight = albumState == ALBUM_IN ? 10.0f * SCALE : 30.0f * SCALE;
             d3d11DeviceContext->Unmap(constantBuffer3, 0);
 
             d3d11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1321,7 +1328,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     albums[album_keys[activeAlbum]].songs[j].title.c_str(),
                     wcslen(albums[album_keys[activeAlbum]].songs[j].title.c_str()),
                     textFormat3,
-                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + j * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + (j - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
                     textBrush
                 );
             }
