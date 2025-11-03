@@ -103,6 +103,7 @@ int selAlbum = 0;
 int activeAlbum = -1;
 int selSong = 0;
 int activeSong = -1;
+int playingAlbum = -1;
 bool selActive = false;
 #define ALBUM_SWINGOUT_TICKS 7
 float prevalbumx = ALBUM_RIGHT_STOP;
@@ -222,6 +223,7 @@ void doButtons(LPARAM lparam, int action) {
         else if (songState == SONG_OUT && selSong >= 0 && selActive) {
             printf("song %d selected\n", selSong);
             activeSong = selSong;
+            playingAlbum = activeAlbum;
             pause();
             loadSong(albums[album_keys[activeAlbum]].songs[activeSong].path);
             play();
@@ -1121,6 +1123,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D2D1::ColorF(0.4588235294117647f, 0.4666666666666667f, 0.47843137254901963f),
         &textBrush2
     );
+    ID2D1SolidColorBrush* textBrush3 = nullptr;
+    d2dRenderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.44313725490196076f, 0.8588235294117647f, 0.20392156862745098f),
+        &textBrush3
+    );
 
     QueryPerformanceFrequency(&freq);
     countsPerTick = (double)freq.QuadPart / TICKRATE;
@@ -1184,8 +1191,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             && (cursor.y < PLAYER_HEIGHT)
             && (cursor.x >= 0)
             && (cursor.x <= 268)
-            && ((albumState == ALBUM_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
-            || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size()));
+            && ((albumState != ALBUM_IN && albumState != ALBUM_SWING_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
+            || (songState != SONG_IN && songState != SONG_SWING_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size()));
 
         feedAudio();
 
@@ -1317,7 +1324,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     wcslen(album_keys[i].c_str()),
                     textFormat3,
                     D2D1::RectF(albumx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + (40 + 35) * SCALE, albumY - 13 * SCALE, PLAYER_WIDTH * 2, PLAYER_HEIGHT * 2),
-                    textBrush
+                    playingAlbum == i ? textBrush3 : textBrush
                 );
 
                 d2dRenderTarget->DrawText(
@@ -1332,13 +1339,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
         }
         else {
+            wchar_t numstr[5];
             for (int j = 0; j < albums[album_keys[activeAlbum]].songs.size(); j++) {
+                int chars = swprintf_s(numstr, 5, L"%d", j);
+                const wchar_t* str = chars >= 4 ? L"999+" : numstr;
+                d2dRenderTarget->DrawText(
+                    str,
+                    wcslen(str),
+                    textFormat3,
+                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 10 * SCALE, songy + (j - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    playingAlbum == activeAlbum && activeSong == j ? textBrush3 : textBrush
+                );
                 d2dRenderTarget->DrawText(
                     albums[album_keys[activeAlbum]].songs[j].title.c_str(),
                     wcslen(albums[album_keys[activeAlbum]].songs[j].title.c_str()),
                     textFormat3,
                     D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + (j - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
-                    textBrush
+                    playingAlbum == activeAlbum && activeSong == j ? textBrush3 : textBrush
                 );
             }
         }
