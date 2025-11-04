@@ -214,11 +214,6 @@ float map(float3 p)
             sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 0), 15, 12, 5, 5),
             8.0
         );
-        a = opSmoothUnion(
-            a,
-            sdRoundedTruncatedCone(p - float3(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 0), 15, 12, 5, 5),
-            8.0
-        );
         /*a = opSmoothSubtraction(
             sdVerticalCapsule(p - float3(PLAYER_WIDTH - 65 * SCALE, -20, 0), PLAYER_HEIGHT + 20, 1),
             a,
@@ -229,13 +224,6 @@ float map(float3 p)
             case 7:
                 a = opSmoothSubtraction(
                     sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 5 + 15 * 2), 15 * 2),
-                    a,
-                    1.0
-                );
-                break;
-            case 8:
-                a = opSmoothSubtraction(
-                    sdSphere(p - float3(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 5 + 15 * 2), 15 * 2),
                     a,
                     1.0
                 );
@@ -473,14 +461,6 @@ float4 ps_main(VS_Output input) : SV_Target
                 float2(PLAYER_WIDTH - 35 * SCALE + xlen * 0.125, 35 * SCALE + xlen),
                 1
             )
-        );
-        sdf = opUnion(
-            sdf,
-            sdCircle(px - float2(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE), 6.0)
-        );
-        sdf = opSubtraction(
-            sdCircle(px - float2(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE), 4.0),
-            sdf
         );
         return float4(brightness, sdf, 0, 0);
     }

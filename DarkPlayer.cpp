@@ -1,4 +1,4 @@
-#include "DarkPlayer.h"
+﻿#include "DarkPlayer.h"
 
 #include "vs.h"
 #include "vs2.h"
@@ -221,10 +221,16 @@ void doButtons(LPARAM lparam, int action) {
             return;
         }
         else if (songState == SONG_OUT && selSong >= 0 && selActive) {
-            printf("song %d selected\n", selSong);
-            activeSong = selSong;
-            playingAlbum = activeAlbum;
-            loadSong(albums[album_keys[activeAlbum]].songs[activeSong].path);
+            if (selSong == 0) {
+                printf("back to album view\n");
+                songState = SONG_SWING_IN;
+            }
+            else {
+                printf("song %d selected\n", selSong);
+                activeSong = selSong;
+                playingAlbum = activeAlbum;
+                loadSong(albums[album_keys[activeAlbum]].songs[activeSong-1].path);
+            }
         }
     }
 
@@ -253,15 +259,6 @@ void doButtons(LPARAM lparam, int action) {
         if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
             printf("panel in\n");
             state = PANEL_SWING_IN;
-        }
-        if (button(PLAYER_WIDTH - 35 * SCALE, 85 * SCALE, 15 + 6)) {
-            printf("swap album / song view\n");
-            if (albumState == ALBUM_OUT) {
-                albumState = ALBUM_SWING_IN;
-            }
-            else if (songState == SONG_OUT) {
-                songState = SONG_SWING_IN;
-            }
         }
     }
 }
@@ -316,7 +313,7 @@ void tick() {
     }
     else if (songState != SONG_IN) {
         prevsongy = cursongy;
-        float low = SONGY_TOP - std::max(0, (int)albums[album_keys[activeAlbum]].songs.size() - 16) * SONG_HEIGHT;
+        float low = SONGY_TOP - std::max(0, (int)albums[album_keys[activeAlbum]].songs.size()+1 - 16) * SONG_HEIGHT;
         if ((cursongy > SONGY_TOP && !(scrolloverride < 0 && songyvel <= -OVERRIDE_EPSILON)) ||
             (cursongy < low && !(scrolloverride > 0 && songyvel >= OVERRIDE_EPSILON))) {
             float dist = (cursongy > SONGY_TOP ? SONGY_TOP : low) - cursongy;
@@ -500,6 +497,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_LBUTTONUP: {
         doButtons(lparam, ACTION_LUP);
         ldownid = -1;
+        break;
+    }
+    case WM_APPCOMMAND:
+    {
+        if (GET_APPCOMMAND_LPARAM(lparam) == APPCOMMAND_BROWSER_BACKWARD && songState == SONG_OUT){
+            songState = SONG_SWING_IN;
+        }
         break;
     }
     case WM_SETCURSOR:
@@ -1190,7 +1194,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 && (cursor.x >= 0)
                 && (cursor.x <= 268)
                 && ((albumState == ALBUM_OUT && selAlbum >= 0 && (cursor.y - curpanely + ALBUM_HEIGHT) >= 0.0f && selAlbum < nAlbums)
-                    || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong < (int)albums[album_keys[activeAlbum]].songs.size())
+                    || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong <= (int)albums[album_keys[activeAlbum]].songs.size())
                     );
         }
 
@@ -1339,23 +1343,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
         }
         else {
+            d2dRenderTarget->DrawText(
+                L"↩",
+                wcslen(L"↩"),
+                textFormat3,
+                D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 10 * SCALE, songy + (0.0f - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                textBrush
+            );
             wchar_t numstr[5];
             for (int j = 0; j < albums[album_keys[activeAlbum]].songs.size(); j++) {
-                int chars = swprintf_s(numstr, 5, L"%d", j);
-                const wchar_t* str = chars >= 4 ? L"999+" : numstr;
+                int chars = swprintf_s(numstr, 5, L"%d", j+1);
+                const wchar_t* str = chars >= 5 ? L"999+" : numstr;
                 d2dRenderTarget->DrawText(
                     str,
                     wcslen(str),
                     textFormat3,
-                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 10 * SCALE, songy + (j - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
-                    playingAlbum == activeAlbum && activeSong == j ? textBrush3 : textBrush
+                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 10 * SCALE, songy + (j+1 - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    playingAlbum == activeAlbum && activeSong == j+1 ? textBrush3 : textBrush
                 );
                 d2dRenderTarget->DrawText(
                     albums[album_keys[activeAlbum]].songs[j].title.c_str(),
                     wcslen(albums[album_keys[activeAlbum]].songs[j].title.c_str()),
                     textFormat3,
-                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + (j - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
-                    playingAlbum == activeAlbum && activeSong == j ? textBrush3 : textBrush
+                    D2D1::RectF(songx * 268.0f + (panelx - 1.0f) * PLAYER_WIDTH + 30 * SCALE, songy + (j+1 - 0.20f) * SONG_HEIGHT, songx * 268.0f + panelx * PLAYER_WIDTH - 80 * SCALE, PLAYER_HEIGHT * 2),
+                    playingAlbum == activeAlbum && activeSong == j+1 ? textBrush3 : textBrush
                 );
             }
         }
