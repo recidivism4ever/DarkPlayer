@@ -22,8 +22,6 @@
 #include <wincodec.h>
 #pragma comment(lib, "windowscodecs.lib")
 
-#include <d3dcsx.h>
-
 #include <xaudio2.h>
 #include <xaudio2fx.h>
 #pragma comment(lib, "xaudio2.lib")
@@ -73,6 +71,19 @@ struct Song {
     }
 };
 
+struct ActiveSong {
+    std::wstring title;
+    std::wstring artist;
+    double durationSec;
+    bool thumbnailFound;
+    BYTE thumbnail[THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4];
+};
+
+extern ActiveSong activeSong2;
+
+extern ID3D11DeviceContext1* d3d11DeviceContext;
+extern ID3D11Texture2D* albumTexture;
+
 struct Album {
     std::vector<Song> songs;
     std::wstring artist;
@@ -92,6 +103,8 @@ void play();
 
 void pause();
 
+void seekTo(float frac);
+
 void feedAudio();
 
 extern float frameDeltaSec;
@@ -100,6 +113,12 @@ extern float progress;
 
 extern double elapsedSec;
 
-extern double currentSongDuration;
-
 double getMediaDurationSec(const WCHAR* filePath);
+
+std::wstring getSongTitle(IShellItem* psi);
+
+std::wstring getArtist(IShellItem* psi);
+
+bool getThumbnail(IShellItem* psi, BYTE* buffer);
+
+double getDurationSec(IShellItem* psi);

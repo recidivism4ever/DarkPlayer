@@ -15,6 +15,7 @@ cbuffer constants : register(b0)
 
 Texture2DArray albums : register(t0);
 Texture2DArray basemaps : register(t1);
+Texture2D album : register(t2);
 SamplerState mysampler : register(s0);
 
 #define imgradius ((170.0 / 2) * SCALE)
@@ -360,7 +361,7 @@ float4 ps2_main(VS_Output input) : SV_Target
             capsuleSDF(px, float2(PLAYER_WIDTH / 2 + PSDIST, PLAYER_HEIGHT - 75 * SCALE + PSHH), float2(PLAYER_WIDTH / 2 + PSDIST, PLAYER_HEIGHT - 75 * SCALE - PSHH), PSRAD)
         ), 0.0, 1.0)
         : s.a;
-        c = lerp(albums.Sample(mysampler, float3(imgpx, 1)), grey, imgsdf);
+        c = lerp(album.Sample(mysampler, imgpx), grey, imgsdf);
         c = lerp(c, lerp(orange * 1.5, white * 1.5, 1.0 - psym), 1.0 - playbtnsdf);
         c = lerp(c, paint, 1.0 - s.g);
         c = lerp(c, paint * 1.5, 1.0 - s.b);

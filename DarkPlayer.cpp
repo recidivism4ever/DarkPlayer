@@ -69,6 +69,11 @@ void getAccent(void) {
 std::map<std::wstring, Album> albums;
 std::vector<std::wstring> album_keys;
 
+ActiveSong activeSong2;
+
+ID3D11DeviceContext1* d3d11DeviceContext;
+ID3D11Texture2D* albumTexture;
+
 int prevmousex, prevmousey, mousex, mousey;
 int btnid, hoveredid, ldownid = -1;
 int actiontype;
@@ -79,7 +84,6 @@ int actiontype;
 bool playing = false;
 float progress = 0.10f;
 double elapsedSec = 0.0;
-double currentSongDuration = 0.0;
 #define SWINGOUT_TICKS 10
 float prevpanelx = PANEL_LEFT_STOP;
 float curpanelx = PANEL_LEFT_STOP;
@@ -119,6 +123,10 @@ float prevsongy = SONGY_TOP;
 float cursongy = SONGY_TOP;
 float songy = SONGY_TOP;
 float songyvel = 0.0f;
+bool hoveringtimeline = false;
+bool draggingtimeline = false;
+float timelinex = 0.0f;
+float timelinefrac = 0.0f;
 
 enum State {
     DEFAULT,
@@ -232,6 +240,13 @@ void doButtons(LPARAM lparam, int action) {
                 loadSong(albums[album_keys[activeAlbum]].songs[activeSong-1].path);
             }
         }
+        else if (hoveringtimeline) {
+            draggingtimeline = true;
+        }
+    }
+    else if (actiontype == ACTION_LUP && draggingtimeline) {
+        draggingtimeline = false;
+        seekTo(timelinefrac);
     }
 
     if (state == DEFAULT) {
@@ -240,11 +255,15 @@ void doButtons(LPARAM lparam, int action) {
             if (playing) pause();
             else play();
         }
-        if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
-            printf("skip backward\n");
+        if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6) && activeSong >= 0) {
+            activeSong--;
+            if (!activeSong) activeSong = albums[album_keys[activeAlbum]].songs.size();
+            loadSong(albums[album_keys[activeAlbum]].songs[activeSong-1].path);
         }
-        if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6)) {
-            printf("skip forward\n");
+        if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6) && activeSong >= 0) {
+            activeSong++;
+            if (activeSong > albums[album_keys[activeAlbum]].songs.size()) activeSong = 1;
+            loadSong(albums[album_keys[activeAlbum]].songs[activeSong - 1].path);
         }
         if (button(PLAYER_WIDTH - 35 * SCALE, 35 * SCALE, 15 + 6)) {
             printf("close\n");
@@ -491,25 +510,34 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         break;
     }
     case WM_LBUTTONDOWN: {
+        SetCapture(hwnd);
         doButtons(lparam, ACTION_LDOWN);
         break;
     }
     case WM_LBUTTONUP: {
+        ReleaseCapture();
         doButtons(lparam, ACTION_LUP);
         ldownid = -1;
         break;
     }
     case WM_APPCOMMAND:
     {
-        if (GET_APPCOMMAND_LPARAM(lparam) == APPCOMMAND_BROWSER_BACKWARD && songState == SONG_OUT){
-            songState = SONG_SWING_IN;
+        if (GET_APPCOMMAND_LPARAM(lparam) == APPCOMMAND_BROWSER_BACKWARD){
+            if (state == PANEL) {
+                if (songState == SONG_OUT) {
+                    songState = SONG_SWING_IN;
+                }
+                else {
+                    state = PANEL_SWING_IN;
+                }
+            }
         }
         break;
     }
     case WM_SETCURSOR:
     {
         // Check if the cursor is over the client area of the window
-        if (hoveredid >= 0)
+        if (hoveredid >= 0 || hoveringtimeline)
         {
             // Load the hand cursor
             HCURSOR hHandCursor = LoadCursor(NULL, IDC_HAND);
@@ -591,8 +619,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     nAlbums = album_keys.size();
 
-    loadSong(albums[album_keys[6]].songs[17].path);
-    
     // Open a window
     HWND hwnd;
     {
@@ -636,7 +662,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Create D3D11 Device and Context
     ID3D11Device1* d3d11Device;
-    ID3D11DeviceContext1* d3d11DeviceContext;
     {
         ID3D11Device* baseDevice;
         ID3D11DeviceContext* baseDeviceContext;
@@ -915,6 +940,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ID3D11SamplerState* samplerState;
     d3d11Device->CreateSamplerState(&samplerDesc, &samplerState);
 
+    D3D11_TEXTURE2D_DESC albumTextureDesc = {};
+    albumTextureDesc.Width = THUMBNAIL_SIZE;
+    albumTextureDesc.Height = THUMBNAIL_SIZE;
+    albumTextureDesc.MipLevels = 1;
+    albumTextureDesc.ArraySize = 1;
+    albumTextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    albumTextureDesc.SampleDesc.Count = 1;
+    albumTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    albumTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    {
+        D3D11_SUBRESOURCE_DATA idata;
+        BYTE* idatab = (BYTE*)calloc(1, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4);
+        for (int i = 0; i < 250; i++) {
+            for (int j = 0; j < 500; j++) {
+                idatab[i * 500 * 4 + j * 4 + 0] = 0;
+                idatab[i * 500 * 4 + j * 4 + 1] = 255;
+            }
+        }
+        idata.pSysMem = idatab;
+        idata.SysMemPitch = THUMBNAIL_SIZE * 4;
+        d3d11Device->CreateTexture2D(&albumTextureDesc, &idata, &albumTexture);
+        free(idatab);
+    }
+    ID3D11ShaderResourceView* albumview;
+    d3d11Device->CreateShaderResourceView(albumTexture, nullptr, &albumview);
+
     // Create Texture
     D3D11_TEXTURE2D_DESC textureDesc = {};
     textureDesc.Width = THUMBNAIL_SIZE;
@@ -1110,6 +1161,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         pTrimmingSign
     );
 
+    IDWriteTextFormat* textFormat4 = nullptr;
+    pDWriteFactory->CreateTextFormat(
+        L"Segoe UI", // Font family name
+        NULL,
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        11.0f,
+        L"en-us", // Locale
+        &textFormat4
+    );
+    textFormat4->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
     D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
 
     // Text brush
@@ -1128,6 +1192,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D2D1::ColorF(0.44313725490196076f, 0.8588235294117647f, 0.20392156862745098f),
         &textBrush3
     );
+
+    loadSong(albums[album_keys[6]].songs[17].path);
 
     QueryPerformanceFrequency(&freq);
     countsPerTick = (double)freq.QuadPart / TICKRATE;
@@ -1197,6 +1263,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     || (songState == SONG_OUT && selSong >= 0 && (cursor.y - cursongy + SONG_HEIGHT * 0.5f) >= 0.0f && selSong <= (int)albums[album_keys[activeAlbum]].songs.size())
                     );
         }
+        hoveringtimeline = state == DEFAULT && lineSegDistToPoint(22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, PLAYER_WIDTH - 22 * SCALE, PLAYER_HEIGHT - 157 * SCALE, cursor.x, cursor.y) < 8.0f;
+        timelinex = std::min(PLAYER_WIDTH - 22 * SCALE, std::max(22 * SCALE, (int)cursor.x));
+        timelinefrac = (timelinex - 22 * SCALE) / (PLAYER_WIDTH - 22 * SCALE - 22 * SCALE);
 
         feedAudio();
 
@@ -1216,7 +1285,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             constants->accent[2] = ((accentColor >> 16) & 0xff) / 255.0f;
             constants->accent[1] = ((accentColor >> 8) & 0xff) / 255.0f;
             constants->accent[0] = (accentColor & 0xff) / 255.0f;
-            constants->progress = progress;
+            constants->progress = std::max(0.0001f, draggingtimeline ? timelinefrac : progress);
             constants->panelx = panelx;
             constants->pressedButton = ldownid == hoveredid ? ldownid + 1 : 0;
             constants->playing = playing;
@@ -1252,6 +1321,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d3d11DeviceContext->PSSetShaderResources(0, 1, &textureView);
         d3d11DeviceContext->PSSetShaderResources(1, 1, &baseview);
+        d3d11DeviceContext->PSSetShaderResources(2, 1, &albumview);
         d3d11DeviceContext->PSSetSamplers(0, 1, &samplerState);
 
         d3d11DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
@@ -1294,26 +1364,63 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         
         d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
-        // Draw the text
-        {
-            const wchar_t* text = L"Poisoned";
-            d2dRenderTarget->DrawText(
-                text,
-                wcslen(text),
-                textFormat,
-                D2D1::RectF(0, 288 * SCALE, PLAYER_WIDTH, 308 * SCALE),
-                textBrush
-            );
-        }
+        d2dRenderTarget->DrawText(
+            activeSong2.title.c_str(),
+            wcslen(activeSong2.title.c_str()),
+            textFormat,
+            D2D1::RectF(0, 288 * SCALE, PLAYER_WIDTH, 308 * SCALE),
+            textBrush
+        );
 
-        {
-            const wchar_t* text = L"The Third Twin";
+        d2dRenderTarget->DrawText(
+            activeSong2.artist.c_str(),
+            wcslen(activeSong2.artist.c_str()),
+            textFormat2,
+            D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
+            textBrush2
+        );
+
+        wchar_t ela[9], dur[9], tl[9];
+        int elahrs = elapsedSec / 60 / 60;
+        int elamin = (elapsedSec - elahrs * 60 * 60) / 60;
+        int elasec = elapsedSec - elahrs * 60 * 60 - elamin * 60;
+        int durhrs = activeSong2.durationSec / 60 / 60;
+        int durmin = (activeSong2.durationSec - durhrs * 60 * 60) / 60;
+        int dursec = activeSong2.durationSec - durhrs * 60 * 60 - durmin * 60;
+        int tlhrs = timelinefrac * activeSong2.durationSec / 60 / 60;
+        int tlmin = (timelinefrac * activeSong2.durationSec - tlhrs * 60 * 60) / 60;
+        int tlsec = timelinefrac * activeSong2.durationSec - tlhrs * 60 * 60 - tlmin * 60;
+        durhrs ?
+            swprintf_s(ela, sizeof(ela) / sizeof(*ela), L"%02d:%02d:%02d", elahrs, elamin, elasec) :
+            swprintf_s(ela, sizeof(ela) / sizeof(*ela), L"%02d:%02d", elamin, elasec);
+        durhrs ?
+            swprintf_s(dur, sizeof(dur) / sizeof(*dur), L"%02d:%02d:%02d", durhrs, durmin, dursec) :
+            swprintf_s(dur, sizeof(dur) / sizeof(*dur), L"%02d:%02d", durmin, dursec);
+        durhrs ?
+            swprintf_s(tl, sizeof(tl) / sizeof(*tl), L"%02d:%02d:%02d", tlhrs, tlmin, tlsec) :
+            swprintf_s(tl, sizeof(tl) / sizeof(*tl), L"%02d:%02d", tlmin, tlsec);
+#define TIME_WIDTH (30*SCALE)
+        d2dRenderTarget->DrawText(
+            ela,
+            wcslen(ela),
+            textFormat4,
+            D2D1::RectF(22 * SCALE - TIME_WIDTH, PLAYER_HEIGHT - 145 * SCALE, 22 * SCALE + TIME_WIDTH, PLAYER_HEIGHT),
+            textBrush
+        );
+        d2dRenderTarget->DrawText(
+            dur,
+            wcslen(dur),
+            textFormat4,
+            D2D1::RectF(PLAYER_WIDTH - 22 * SCALE - TIME_WIDTH, PLAYER_HEIGHT - 145 * SCALE, PLAYER_WIDTH - 22 * SCALE + TIME_WIDTH, PLAYER_HEIGHT),
+            textBrush
+        );
+        if (hoveringtimeline || draggingtimeline) {
             d2dRenderTarget->DrawText(
-                text,
-                wcslen(text),
-                textFormat2,
-                D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
-                textBrush2
+                tl,
+                wcslen(tl),
+                textFormat4,
+                D2D1::RectF(timelinex - TIME_WIDTH, PLAYER_HEIGHT - 178 * SCALE, timelinex + TIME_WIDTH, PLAYER_HEIGHT),
+                textBrush
             );
         }
 

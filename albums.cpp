@@ -56,8 +56,8 @@ HRESULT GetScaledPixelsFromStream(
     return hr;
 }
 
-HRESULT getThumbnail(IShellItem* psi, Album *a) {
-    if (a->thumbnail == NULL) return NULL;
+bool getThumbnail(IShellItem* psi, BYTE* buffer) {
+    if (buffer == NULL) return NULL;
 
     IPropertyStore* pps = nullptr;
     HRESULT hr = psi->BindToHandler(NULL, BHID_PropertyStore, IID_PPV_ARGS(&pps));
@@ -68,10 +68,12 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
     PROPVARIANT pv;
     PropVariantInit(&pv);
 
+    bool found = false;
+
     hr = pps->GetValue(PKEY_ThumbnailStream, &pv);
     if (SUCCEEDED(hr)) {
-        hr = GetScaledPixelsFromStream(pv, a->thumbnail);
-        if (SUCCEEDED(hr)) a->thumbnailFound = true;
+        hr = GetScaledPixelsFromStream(pv, buffer);
+        if (SUCCEEDED(hr)) found = true;
         PropVariantClear(&pv);
     }
 
@@ -116,7 +118,7 @@ HRESULT getThumbnail(IShellItem* psi, Album *a) {
     }
     */
 
-    return hr;
+    return found;
 }
 
 std::wstring getAlbumTitle(IShellItem* psi) {
@@ -263,7 +265,7 @@ void findMusicInFolder(IShellItem* psiFolder,
                         albums[albumTitle].artist = getArtist(psi);
                     }
                     if (!albums[albumTitle].thumbnailFound) {
-                        getThumbnail(psi, &(albums[albumTitle]));
+                        albums[albumTitle].thumbnailFound = getThumbnail(psi, albums[albumTitle].thumbnail);
                     }
                     albums[albumTitle].songs.push_back(s);
                     CoTaskMemFree(pwszPath);

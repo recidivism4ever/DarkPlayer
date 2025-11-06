@@ -132,7 +132,7 @@ void feedAudio() {
     UINT64 dif = state.SamplesPlayed - lastSP;
     playhead = (playhead + dif) % (3 * BUFSZ);
     elapsedSec += dif / 44100.0;
-    progress = elapsedSec / currentSongDuration;
+    progress = elapsedSec / activeSong2.durationSec;
     lastSP = state.SamplesPlayed;
 
     static bool hannInitialized = false;
@@ -195,6 +195,21 @@ void feedAudio() {
 
 }
 
+void seekTo(float frac) {
+    pause();
+    PROPVARIANT var;
+    elapsedSec = frac * activeSong2.durationSec;
+    HRESULT hr = InitPropVariantFromInt64(elapsedSec * 1e9 / 100.0, &var);
+    pReader->SetCurrentPosition(GUID_NULL, var);
+    PropVariantClear(&var);
+    pSourceVoice->FlushSourceBuffers();
+    curbuf = 0;
+    playhead = 0;
+    samples.clear();
+    progress = 0.0f;
+    play();
+}
+
 double getMediaDurationSec(const WCHAR* filePath){
     IMFMediaSource* pMSource = nullptr;
     IMFPresentationDescriptor* pPD = nullptr;
@@ -250,6 +265,8 @@ done:
 
 HRESULT loadSong(std::wstring input_file) {
 
+    if (pReader) pReader->Release();
+
     HRESULT hr = MFCreateSourceReaderFromURL(input_file.c_str(), NULL, &pReader);
     if (FAILED(hr)) {
         std::cerr << "Failed to create source reader for input file: " << std::endl;
@@ -282,7 +299,17 @@ HRESULT loadSong(std::wstring input_file) {
 
     SafeRelease(&pOutputMediaType);
 
-    currentSongDuration = getMediaDurationSec(input_file.c_str());
+    IShellItem* psi = NULL;
+    hr = SHCreateItemFromParsingName(input_file.c_str(), NULL, IID_PPV_ARGS(&psi));
+    activeSong2.title = getSongTitle(psi);
+    activeSong2.artist = getArtist(psi);
+    activeSong2.thumbnailFound = getThumbnail(psi, activeSong2.thumbnail);
+    activeSong2.durationSec = getDurationSec(psi);
+    if (!activeSong2.thumbnailFound) {
+        memset(activeSong2.thumbnail, 0, sizeof(activeSong2.thumbnail));
+    }
+    d3d11DeviceContext->UpdateSubresource(albumTexture, D3D11CalcSubresource(0, 0, 1), NULL, activeSong2.thumbnail, THUMBNAIL_SIZE * 4, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4);
+    psi->Release();
 
     pause();
     pSourceVoice->FlushSourceBuffers();
