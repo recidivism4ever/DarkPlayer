@@ -83,6 +83,8 @@
     <FxCompile Include="ps2.hlsl">
       <Filter>Source Files</Filter>
     </FxCompile>
+    <FxCompile Include="vs2.hlsl" />
+    <FxCompile Include="ps3.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="hdr.hlsli">
