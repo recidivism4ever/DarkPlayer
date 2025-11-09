@@ -1118,23 +1118,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         L"en-us", // Locale
         &textFormat
     );
-    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-    {
-        IDWriteInlineObject* pTrimmingSign = nullptr;
-        pDWriteFactory->CreateEllipsisTrimmingSign(
-            textFormat, // Use the text format you intend to trim
-            &pTrimmingSign
-        );
-        DWRITE_TRIMMING trimmingOptions = {
-            DWRITE_TRIMMING_GRANULARITY_CHARACTER, // Granularity
-            0, // Delimiter (not needed for simple ellipsis)
-            0  // Delimiter Count
-        };
-        textFormat->SetTrimming(
-            &trimmingOptions,
-            pTrimmingSign
-        );
-    }
 
     IDWriteTextFormat* textFormat2 = nullptr;
     pDWriteFactory->CreateTextFormat(
@@ -1210,6 +1193,40 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         D2D1::ColorF(0.44313725490196076f, 0.8588235294117647f, 0.20392156862745098f),
         &textBrush3
     );
+
+#define TITLE_WIDTH 80
+
+    // Define the gradient stops
+    D2D1_GRADIENT_STOP gradientStops[] =
+    {
+        { 0.0f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 0.0f) },
+        { 0.25f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 1.0f) },
+        { 0.75f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 1.0f) },
+        { 1.0f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 0.0f) },
+    };
+
+    // Create the gradient stop collection
+    ID2D1GradientStopCollection* pGradientStops = nullptr;
+    d2dRenderTarget->CreateGradientStopCollection(
+        gradientStops,
+        _countof(gradientStops),
+        D2D1_GAMMA_2_2,
+        D2D1_EXTEND_MODE_CLAMP,
+        &pGradientStops
+    );
+
+    // Create the linear gradient brush
+    ID2D1LinearGradientBrush* pLinearGradientBrush = nullptr;
+    d2dRenderTarget->CreateLinearGradientBrush(
+        D2D1::LinearGradientBrushProperties(
+            D2D1::Point2F(PLAYER_WIDTH/2- TITLE_WIDTH, 0),
+            D2D1::Point2F(PLAYER_WIDTH/2+ TITLE_WIDTH, 0)
+        ),
+        pGradientStops,
+        &pLinearGradientBrush
+    );
+
+    pGradientStops->Release();
 
     loadSong(albums[album_keys[6]].songs[17].path);
 
@@ -1382,13 +1399,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         
         d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
-#define TITLE_WIDTH 80
+        IDWriteTextLayout* pTextLayout = nullptr;
+        pDWriteFactory->CreateTextLayout(
+            activeSong2.title.c_str(),
+            wcslen(activeSong2.title.c_str()),
+            textFormat,
+            32*PLAYER_WIDTH,
+            PLAYER_HEIGHT,
+            &pTextLayout
+        );
+        DWRITE_TEXT_METRICS metrics;
+        pTextLayout->GetMetrics(&metrics);
+        pTextLayout->Release();
+
+        static float titlet = 0.0f;
+        float titlex = std::max(0.0f, metrics.width-1.f*TITLE_WIDTH)*0.5f*(sinf(titlet)-1.0f);
+        titlet += 0.01f;
+
         d2dRenderTarget->DrawText(
             activeSong2.title.c_str(),
             wcslen(activeSong2.title.c_str()),
             textFormat,
-            D2D1::RectF(PLAYER_WIDTH/2 - TITLE_WIDTH, 288 * SCALE, PLAYER_WIDTH/2 + TITLE_WIDTH, 308 * SCALE),
-            textBrush
+            D2D1::RectF(titlex + PLAYER_WIDTH/2 - TITLE_WIDTH*0.5f, 288 * SCALE, PLAYER_WIDTH*32, 308 * SCALE),
+            pLinearGradientBrush
         );
 
         d2dRenderTarget->DrawText(
