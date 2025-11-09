@@ -1119,6 +1119,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &textFormat
     );
     textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+    {
+        IDWriteInlineObject* pTrimmingSign = nullptr;
+        pDWriteFactory->CreateEllipsisTrimmingSign(
+            textFormat, // Use the text format you intend to trim
+            &pTrimmingSign
+        );
+        DWRITE_TRIMMING trimmingOptions = {
+            DWRITE_TRIMMING_GRANULARITY_CHARACTER, // Granularity
+            0, // Delimiter (not needed for simple ellipsis)
+            0  // Delimiter Count
+        };
+        textFormat->SetTrimming(
+            &trimmingOptions,
+            pTrimmingSign
+        );
+    }
 
     IDWriteTextFormat* textFormat2 = nullptr;
     pDWriteFactory->CreateTextFormat(
@@ -1146,20 +1162,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     );
     textFormat3->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     textFormat3->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-    IDWriteInlineObject* pTrimmingSign = nullptr;
-    pDWriteFactory->CreateEllipsisTrimmingSign(
-        textFormat3, // Use the text format you intend to trim
-        &pTrimmingSign
-    );
-    DWRITE_TRIMMING trimmingOptions = {
-        DWRITE_TRIMMING_GRANULARITY_CHARACTER, // Granularity
-        0, // Delimiter (not needed for simple ellipsis)
-        0  // Delimiter Count
-    };
-    textFormat3->SetTrimming(
-        &trimmingOptions,
-        pTrimmingSign
-    );
+    {
+        IDWriteInlineObject* pTrimmingSign = nullptr;
+        pDWriteFactory->CreateEllipsisTrimmingSign(
+            textFormat3, // Use the text format you intend to trim
+            &pTrimmingSign
+        );
+        DWRITE_TRIMMING trimmingOptions = {
+            DWRITE_TRIMMING_GRANULARITY_CHARACTER, // Granularity
+            0, // Delimiter (not needed for simple ellipsis)
+            0  // Delimiter Count
+        };
+        textFormat3->SetTrimming(
+            &trimmingOptions,
+            pTrimmingSign
+        );
+    }
 
     IDWriteTextFormat* textFormat4 = nullptr;
     pDWriteFactory->CreateTextFormat(
@@ -1364,11 +1382,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         
         d2dRenderTarget->PushAxisAlignedClip(clipRect, D2D1_ANTIALIAS_MODE_ALIASED);
 
+#define TITLE_WIDTH 80
         d2dRenderTarget->DrawText(
             activeSong2.title.c_str(),
             wcslen(activeSong2.title.c_str()),
             textFormat,
-            D2D1::RectF(0, 288 * SCALE, PLAYER_WIDTH, 308 * SCALE),
+            D2D1::RectF(PLAYER_WIDTH/2 - TITLE_WIDTH, 288 * SCALE, PLAYER_WIDTH/2 + TITLE_WIDTH, 308 * SCALE),
             textBrush
         );
 
@@ -1376,7 +1395,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             activeSong2.artist.c_str(),
             wcslen(activeSong2.artist.c_str()),
             textFormat2,
-            D2D1::RectF(0, 315 * SCALE, PLAYER_WIDTH, 324 * SCALE),
+            D2D1::RectF(PLAYER_WIDTH / 2 - TITLE_WIDTH, 315 * SCALE, PLAYER_WIDTH / 2 + TITLE_WIDTH, 324 * SCALE),
             textBrush2
         );
 
