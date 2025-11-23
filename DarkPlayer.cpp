@@ -82,7 +82,7 @@ int actiontype;
 #define ACTION_LUP 2
 
 bool playing = false;
-float progress = 0.10f;
+float progress = 0.0f;
 double elapsedSec = 0.0;
 #define SWINGOUT_TICKS 10
 float prevpanelx = PANEL_LEFT_STOP;
@@ -251,16 +251,19 @@ void doButtons(LPARAM lparam, int action) {
 
     if (state == DEFAULT) {
         if (button(PLAYER_WIDTH / 2, PLAYER_HEIGHT - 75 * SCALE, 30 + 10)) {
+            if (activeSong2.durationSec == 0.0) return;
             printf("play/pause\n");
             if (playing) pause();
             else play();
         }
         if (button(56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6) && activeSong >= 0) {
+            if (activeSong2.durationSec == 0.0) return;
             activeSong--;
             if (!activeSong) activeSong = albums[album_keys[activeAlbum]].songs.size();
             loadSong(albums[album_keys[activeAlbum]].songs[activeSong-1].path);
         }
         if (button(PLAYER_WIDTH - 56 * SCALE, PLAYER_HEIGHT - 75 * SCALE, 28 + 6) && activeSong >= 0) {
+            if (activeSong2.durationSec == 0.0) return;
             activeSong++;
             if (activeSong > albums[album_keys[activeAlbum]].songs.size()) activeSong = 1;
             loadSong(albums[album_keys[activeAlbum]].songs[activeSong - 1].path);
@@ -840,7 +843,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UINT numVerts2;
     UINT stride2;
     UINT offset2;
-    {
+    if (nAlbums){
 #define ALBW (67.0f / (PLAYER_WIDTH))
 #define ALBH (67.0f / (PLAYER_HEIGHT))
 #define ALBW2 (2.0f*ALBW)
@@ -952,10 +955,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
         D3D11_SUBRESOURCE_DATA idata;
         BYTE* idatab = (BYTE*)calloc(1, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4);
-        for (int i = 0; i < 250; i++) {
+        for (int i = 0; i < 500; i++) {
             for (int j = 0; j < 500; j++) {
-                idatab[i * 500 * 4 + j * 4 + 0] = 0;
-                idatab[i * 500 * 4 + j * 4 + 1] = 255;
+                idatab[i * 500 * 4 + j * 4 + 0] = 30;
+                idatab[i * 500 * 4 + j * 4 + 1] = 28;
+                idatab[i * 500 * 4 + j * 4 + 2] = 25;
+                idatab[i * 500 * 4 + j * 4 + 3] = 255;
             }
         }
         idata.pSysMem = idatab;
@@ -966,26 +971,42 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ID3D11ShaderResourceView* albumview;
     d3d11Device->CreateShaderResourceView(albumTexture, nullptr, &albumview);
 
-    // Create Texture
     D3D11_TEXTURE2D_DESC textureDesc = {};
     textureDesc.Width = THUMBNAIL_SIZE;
     textureDesc.Height = THUMBNAIL_SIZE;
     textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = nAlbums;
+    textureDesc.ArraySize = std::max(1, nAlbums);
     textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
     textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    std::vector<D3D11_SUBRESOURCE_DATA> initialData(nAlbums);
-    for (UINT i = 0; i < nAlbums; ++i)
-    {
-        initialData[i].pSysMem = albums[album_keys[i]].thumbnail;
-        initialData[i].SysMemPitch = textureDesc.Width * 4; // 4 bytes per pixel for R8G8B8A8
-    }
-    // 3. Create the texture array resource with initial data
     ID3D11Texture2D* pTextureArray = nullptr;
-    d3d11Device->CreateTexture2D(&textureDesc, initialData.data(), &pTextureArray);
     ID3D11ShaderResourceView* textureView;
+    if (nAlbums) {
+        std::vector<D3D11_SUBRESOURCE_DATA> initialData(nAlbums);
+        for (UINT i = 0; i < nAlbums; ++i)
+        {
+            initialData[i].pSysMem = albums[album_keys[i]].thumbnail;
+            initialData[i].SysMemPitch = textureDesc.Width * 4; // 4 bytes per pixel for R8G8B8A8
+        }
+        d3d11Device->CreateTexture2D(&textureDesc, initialData.data(), &pTextureArray);
+    }
+    else {
+        D3D11_SUBRESOURCE_DATA idata;
+        BYTE* idatab = (BYTE*)calloc(1, THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4);
+        for (int i = 0; i < 500; i++) {
+            for (int j = 0; j < 500; j++) {
+                idatab[i * 500 * 4 + j * 4 + 0] = 30;
+                idatab[i * 500 * 4 + j * 4 + 1] = 28;
+                idatab[i * 500 * 4 + j * 4 + 2] = 25;
+                idatab[i * 500 * 4 + j * 4 + 3] = 255;
+            }
+        }
+        idata.pSysMem = idatab;
+        idata.SysMemPitch = THUMBNAIL_SIZE * 4;
+        d3d11Device->CreateTexture2D(&textureDesc, &idata, &pTextureArray);
+        free(idatab);
+    }
     d3d11Device->CreateShaderResourceView(pTextureArray, nullptr, &textureView);
 
     RECT cr;
@@ -1106,7 +1127,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     d2dRenderTarget->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
 
-    // Text format
     IDWriteTextFormat* textFormat = nullptr;
     pDWriteFactory->CreateTextFormat(
         L"Bahnschrift", // Font family name
@@ -1177,7 +1197,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     D2D1_SIZE_F renderTargetSize = d2dRenderTarget->GetSize();
 
-    // Text brush
     ID2D1SolidColorBrush* textBrush = nullptr;
     d2dRenderTarget->CreateSolidColorBrush(
         D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f),
@@ -1196,7 +1215,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 #define TITLE_WIDTH 80
 
-    // Define the gradient stops
     D2D1_GRADIENT_STOP gradientStops[] =
     {
         { 0.0f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 0.0f) },
@@ -1205,7 +1223,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         { 1.0f, D2D1::ColorF(0.6549019607843137f, 0.6588235294117647f, 0.6666666666666666f, 0.0f) },
     };
 
-    // Create the gradient stop collection
     ID2D1GradientStopCollection* pGradientStops = nullptr;
     d2dRenderTarget->CreateGradientStopCollection(
         gradientStops,
@@ -1215,7 +1232,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         &pGradientStops
     );
 
-    // Create the linear gradient brush
     ID2D1LinearGradientBrush* pLinearGradientBrush = nullptr;
     d2dRenderTarget->CreateLinearGradientBrush(
         D2D1::LinearGradientBrushProperties(
@@ -1228,7 +1244,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     pGradientStops->Release();
 
-    loadSong(albums[album_keys[6]].songs[17].path);
+    //loadSong(albums[album_keys[6]].songs[17].path);
 
     QueryPerformanceFrequency(&freq);
     countsPerTick = (double)freq.QuadPart / TICKRATE;
@@ -1302,7 +1318,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         timelinex = std::min(PLAYER_WIDTH - 22 * SCALE, std::max(22 * SCALE, (int)cursor.x));
         timelinefrac = (timelinex - 22 * SCALE) / (PLAYER_WIDTH - 22 * SCALE - 22 * SCALE);
 
-        feedAudio();
+        if (playing) feedAudio();
 
         QueryPerformanceCounter(&t1);
         LARGE_INTEGER dif;
@@ -1363,7 +1379,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         d3d11DeviceContext->Draw(numVerts, 0);
 
-        {
+        if (nAlbums){
             D3D11_MAPPED_SUBRESOURCE mappedSubresource;
             d3d11DeviceContext->Map(constantBuffer3, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
             Constants3* constants = (Constants3*)(mappedSubresource.pData);
@@ -1392,7 +1408,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             d3d11DeviceContext->Draw(numVerts2, 0);
         }
 
-        // Perform D2D rendering
         d2dRenderTarget->BeginDraw();
 
         D2D1_RECT_F clipRect = D2D1::RectF(panelx*PLAYER_WIDTH, 0.0f, PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -1411,6 +1426,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         DWRITE_TEXT_METRICS metrics;
         pTextLayout->GetMetrics(&metrics);
         pTextLayout->Release();
+
+        if (activeSong2.durationSec == 0.0) {
+            d2dRenderTarget->DrawText(
+                L"No Track Selected",
+                wcslen(L"No Track Selected"),
+                textFormat2,
+                D2D1::RectF(PLAYER_WIDTH / 2 - TITLE_WIDTH*2, 160 * SCALE, PLAYER_WIDTH / 2 + TITLE_WIDTH*2, 324 * SCALE),
+                textBrush2
+            );
+        }
 
         static float titlet = 0.0f;
         float titlex = std::max(0.0f, metrics.width-1.f*TITLE_WIDTH)*0.5f*(sinf(titlet)-1.0f);

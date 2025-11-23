@@ -196,6 +196,7 @@ void feedAudio() {
 }
 
 void seekTo(float frac) {
+    if (activeSong2.durationSec == 0.0) return;
     pause();
     PROPVARIANT var;
     elapsedSec = frac * activeSong2.durationSec;

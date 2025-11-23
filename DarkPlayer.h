@@ -79,6 +79,7 @@ struct ActiveSong {
     BYTE thumbnail[THUMBNAIL_SIZE * THUMBNAIL_SIZE * 4];
 };
 
+extern int activeSong;
 extern ActiveSong activeSong2;
 
 extern ID3D11DeviceContext1* d3d11DeviceContext;
