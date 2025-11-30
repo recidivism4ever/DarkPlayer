@@ -71,7 +71,7 @@ bool getThumbnail(IShellItem* psi, BYTE* buffer) {
     bool found = false;
 
     hr = pps->GetValue(PKEY_ThumbnailStream, &pv);
-    if (SUCCEEDED(hr)) {
+    if (SUCCEEDED(hr) && pv.vt) {
         hr = GetScaledPixelsFromStream(pv, buffer);
         if (SUCCEEDED(hr)) found = true;
         PropVariantClear(&pv);
