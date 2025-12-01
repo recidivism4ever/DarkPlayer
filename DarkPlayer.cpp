@@ -578,34 +578,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     return result;
 }
 
+#if _DEBUG
+int main()
+{
+    HINSTANCE hInstance = GetModuleHandleW(NULL);
+#else
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-#if _DEBUG
-    if (GetConsoleWindow() == NULL) {
-
-        // Allocate a new console for this process
-        if (!AllocConsole()) {
-            MessageBox(NULL, L"Failed to allocate console!", L"Error", MB_ICONERROR);
-        }
-
-        // Redirect standard C I/O (printf)
-        FILE* p_stdout;
-        FILE* p_stdin;
-        FILE* p_stderr;
-
-        // Use freopen_s to reassign the standard streams
-        // "CONOUT$" is a special name for the console output device
-        if (freopen_s(&p_stdout, "CONOUT$", "w", stdout) != 0) {
-            MessageBox(NULL, L"Failed to redirect stdout!", L"Error", MB_ICONERROR);
-        }
-        if (freopen_s(&p_stdin, "CONIN$", "r", stdin) != 0) {
-            MessageBox(NULL, L"Failed to redirect stdin!", L"Error", MB_ICONERROR);
-        }
-        if (freopen_s(&p_stderr, "CONOUT$", "w", stderr) != 0) {
-            MessageBox(NULL, L"Failed to redirect stderr!", L"Error", MB_ICONERROR);
-        }
-
-    }
 #endif
 
     CoInitialize(0);
