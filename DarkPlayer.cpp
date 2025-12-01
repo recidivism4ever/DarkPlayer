@@ -1305,6 +1305,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         t0 = t1;
         accum += (double)dif.QuadPart;
         frameDeltaSec = ((double)dif.QuadPart / freq.QuadPart);
+        frameDeltaSec = std::min(1.0f, frameDeltaSec);
         tickloop();
 
         {
